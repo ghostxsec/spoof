@@ -5,7 +5,7 @@
     <script>
     function triggerIframe() {
         var iframe = document.createElement('iframe');
-        document.location="http://google.com"
+        window.open("http://google.com");
         //location.replace("http://www.google.com");
         iframe.src = 'data:text/html,<img src=x onerror=alert("No"+"origin")>';
         iframe.style.display = 'none';

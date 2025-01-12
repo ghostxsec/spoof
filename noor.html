@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,9 +6,9 @@
     <script>
     function triggerIframe() {
         var iframe = document.createElement('iframe');
-        window.open("http://google.com");
+        //document.location="http://google.com"
         //location.replace("http://www.google.com");
-        iframe.src = 'data:text/html,<img src=x onerror=alert("No"+"origin")>';
+        iframe.src = 'javascript:prompt("No"+"origin")';
         iframe.style.display = 'none';
         document.body.appendChild(iframe);
     }

@@ -8,7 +8,7 @@
         var iframe = document.createElement('iframe');
         document.location="http://google.com"
         //location.replace("http://www.google.com");
-        iframe.src = 'javascript:prompt("No"+"origin")';
+        iframe.src = 'data:text/html,<img src=x onerror=alert(1)>';
         iframe.style.display = 'none';
         document.body.appendChild(iframe);
     }

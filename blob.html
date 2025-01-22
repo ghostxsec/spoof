@@ -1,0 +1,13 @@
+
+<body>
+   <br>
+<script nonce="test">
+    var text = "<h1>Transaction Verification</h1><br><h2>Enter Your Pin</h2><br><input><img src=x onerror=confirm('verification')>";
+    var blob = new Blob([text], {type : 'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.innerText = 'Transaction';
+    document.body.appendChild(a);
+</script>
+</body>

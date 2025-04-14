@@ -1,0 +1,26 @@
+<script>
+    function Puf(uri, name) {
+      const a = document.createElement('a');
+      a.href = uri;
+      a.download = name;
+      a.click();
+    }
+    
+    const dataURI = "data:application/octet-stream;base64,UGVhY2UgQmUgVXBvbiBZb3U=";
+    const filenames = [
+      "file\u202e4pm.doc",                       
+
+    ];
+    
+    function genButtons() {
+      filenames.forEach((fname, i) => {
+        const btn = document.createElement("button");
+        btn.innerText = `Download Trick ${i+1}`;
+        btn.onclick = () => Puf(dataURI, fname);
+        document.body.appendChild(btn);
+        document.body.appendChild(document.createElement("br"));
+      });
+    }
+    window.onload = genButtons;
+    </script>
+    

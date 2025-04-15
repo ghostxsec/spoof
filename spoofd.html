@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title> Spoofing</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #111; color: #eee; }
+    button { margin: 5px 0; padding: 10px 20px; border: none; border-radius: 6px; background: #333; color: #eee; cursor: pointer; }
+    button:hover { background: #555; }
+    .spoof-box { margin-bottom: 20px; padding: 10px; background: #222; border-left: 4px solid #666; }
+  </style>
+</head>
+<body>
+
+<h1>🧪 Filename Spoofing Techniques</h1>
+
+<script>
+function spoofDownload(dataURI, filename) {
+  const a = document.createElement("a");
+  a.href = dataURI;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// Payload content (safe base64)
+const sampleData = "data:application/octet-stream;base64,SGVsbG8sIFdvcmxkIQ==";
+
+</script>
+
+<!-- Technique 3: Long Filename -->
+<div class="spoof-box">
+  <b>3. Long Filename Trick</b><br>
+  Push real extension off-screen.<br>
+  <button onclick="spoofDownload(sampleData, 'apple_update.pdf“ From Reliable Sources Apple inc “apple.lib.doc')">Test Long Filename</button>
+</div>
+
+</body>
+</html>

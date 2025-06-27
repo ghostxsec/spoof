@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+  <button onclick="Download()">Download</button><br>
+
+
+  <script>
+   
+function Download() {
+  window.open("https://www.google.com");
+  const vbsContent = 'MsgBox "Halo"';
+  const a = vbsContent+"'";
+  const padding = ' '.repeat(1000000);
+  const fakeData = padding + 'www.google.com';
+
+  const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(a + fakeData);
+
+  document.write(`
+    <a id="x" href="${dataUri}" download="test.vbs"></a>
+    <script>document.getElementById("x").click();<\/script>
+  `);
+}
+
+  </script>
+</body>
+</html>

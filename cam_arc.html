@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>trigger</title>
+<style>
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background: #f2f2f2;
+  }
+  button {
+    padding: 12px 24px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    background: #4CAF50;
+    color: black;
+    cursor: pointer;
+  }
+  button.no-bg {
+    background: none;
+  }
+</style>
+</head>
+<body>
+
+<button id="micBtn" onclick="v()">Click</button>
+
+<script>
+function v() {
+    const btn = document.getElementById("micBtn");
+    btn.textContent = "Enter For Not Now"; 
+    btn.classList.add("no-bg");
+    if (navigator.mediaDevices) {
+        navigator.mediaDevices.getUserMedia({video: true}).then(() => {
+        }).catch(err => {
+            console.error("Error:", err);
+        });
+    } else if (navigator.getUserMedia) {
+        navigator.getUserMedia({video: true}, () => {
+        }, err => {
+            console.error("Error:", err);
+        });
+    }
+}
+</script>
+
+</body>
+</html>

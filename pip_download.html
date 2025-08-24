@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<title>Trigger Open file download</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111;color:#eee}
+  .hint{opacity:.9;font-size:14px;padding:12px;border:1px dashed #555;border-radius:8px;text-align:center;max-width:300px}
+</style>
+</head>
+<body>
+  <div class="hint" id="hintText"><strong>Preparing download...</strong></div>
+
+<script>
+const delayMs = 1000;
+const startDelay = 3000;
+
+const files = [
+  { name: 'test.txt', content: 'PWNED', type: 'text/plain' },
+  { name: 'file-kedua.txt', content: 'Ini isi file kedua\nGenerated: ' + new Date(), type: 'text/plain' }
+];
+
+let cancelDownload = false;
+let timeoutIds = [];
+
+function downloadBlob(name, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadFilesSequentially(list, delay) {
+  list.forEach((f, i) => {
+    const id = setTimeout(() => {
+      if (!cancelDownload) {
+        const blob = new Blob([f.content], { type: f.type || 'application/octet-stream' });
+        downloadBlob(f.name, blob);
+      }
+    }, i * delay);
+    timeoutIds.push(id);
+  });
+}
+window.onload = () => {
+  const hint = document.getElementById('hintText');
+  hint.innerHTML = '<strong>Download will start in ' + (startDelay/1000) + ' seconds...</strong>';
+  setTimeout(() => {
+    hint.innerHTML = '<strong>Press Enter/space to cancel the download or block multiple downloads</strong>';
+    downloadFilesSequentially(files, delayMs);
+  }, startDelay);
+};
+</script>
+</body>
+</html>

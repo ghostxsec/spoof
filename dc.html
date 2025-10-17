@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Deploy Dummy Contract (Web3.js)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;padding:20px;background:#0f172a;color:#e6eef8}
+    .card{background:#0b1220;padding:18px;border-radius:10px;max-width:900px;margin:18px auto;box-shadow:0 8px 20px rgba(2,6,23,.6)}
+    button{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #223;background:#1e293b;color:#e6eef8;cursor:pointer}
+    pre{background:#061024;padding:12px;border-radius:8px;overflow:auto}
+    footer{font-size:12px;color:#97b0cf;text-align:center;margin-top:10px}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>Deploy Dummy Contract ke MetaMask</h2>
+    <p style="color:#a9c1e6">Klik Connect MetaMask lalu Deploy untuk menguji proses deploy kontrak dummy. Versi ini sudah menggunakan gas limit dan gas price tetap untuk mencegah error overflow.</p>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="connectBtn">Connect MetaMask</button>
+      <button id="deployBtn">Deploy Dummy Contract</button>
+    </div>
+
+    <h3>Status</h3>
+    <pre id="log">Idle...</pre>
+
+    <footer>Dummy contract akan dideploy tanpa parameter constructor.</footer>
+  </div>
+
+  <script>
+    const connectBtn = document.getElementById('connectBtn');
+    const deployBtn = document.getElementById('deployBtn');
+    const logEl = document.getElementById('log');
+    let web3;
+    let accounts;
+
+    const dummyABI = [
+      {
+        "inputs": [{"internalType": "uint256", "name": "_v", "type": "uint256"}],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "value",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    const dummyBytecode = "0x6080604052348015600f57600080fd5b50600080fdfea2646970667358221220e9d2b8c6ea6d3b3c8a63f6a8f60e3db29b5c7b94a2397c77a6a53130b4ac4c4c64736f6c63430008130033";
+
+    function log(...args){
+      const now = new Date().toLocaleTimeString();
+      logEl.textContent = now + ' — ' + args.map(a=>typeof a==='object'?JSON.stringify(a,null,2):String(a)).join(' ') + '\n' + logEl.textContent;
+    }
+
+    async function connectWallet(){
+      if(window.ethereum){
+        try{
+          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          web3 = new Web3(window.ethereum);
+          log('Connected:', accounts[0]);
+          connectBtn.textContent = 'Connected: ' + accounts[0].slice(0,8) + '...';
+        }catch(err){
+          log('Connect error:', err.message);
+        }
+      } else {
+        alert('MetaMask tidak ditemukan.');
+      }
+    }
+
+    async function deployContract(){
+      try{
+                window.location.href="https://metamask.io"
+
+        if(!web3) throw new Error('Wallet belum terkoneksi');
+        const contract = new web3.eth.Contract(dummyABI);
+        const deployTx = contract.deploy({ data: dummyBytecode, arguments: [42] });
+
+        const gasLimit = 3000000; 
+        const gasPrice = await web3.eth.getGasPrice(); 
+
+        log('Mengirim transaksi deploy...');
+        const newContract = await deployTx.send({ from: accounts[0], gas: gasLimit, gasPrice });
+
+        log('Contract deployed at:', newContract.options.address);
+        alert('Contract deployed: ' + newContract.options.address);
+      }catch(err){
+        log('Deploy error:', err.message);
+        alert('Error: ' + err.message);
+      }
+    }
+
+    connectBtn.addEventListener('click', connectWallet);
+    deployBtn.addEventListener('click', deployContract);
+
+    if(window.ethereum){
+      window.ethereum.on('accountsChanged', (acc)=>{
+        accounts = acc;
+        connectBtn.textContent = acc && acc[0] ? ('Connected: ' + acc[0].slice(0,8) + '...') : 'Connect MetaMask';
+      });
+      window.ethereum.on('chainChanged', (chainId)=>{
+        log('Network changed to', chainId);
+      });
+    }
+  </script>
+</body>
+</html>

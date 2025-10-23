@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <button onclick="start()">Start</button>
+  <script>
+    function start() {
+      if (!window.webkitRequestFileSystem) return;
+
+      const SIZE = 4 * 1024 * 1024;
+      const blob = new Blob(["A".repeat(SIZE)], { type: 'text/plain' });
+
+      webkitRequestFileSystem(window.TEMPORARY, 10 * SIZE, fs => {
+        fs.root.getFile("f.txt", { create: true }, fileEntry => {
+          fileEntry.createWriter(writer => {
+            writer.write(blob);
+            for (let i = 0; i < 1000; i++) {
+              setTimeout(() => {
+                try {
+                  writer.truncate(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
+                } catch (e) {}
+              }, Math.random() * 200);
+            }
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>

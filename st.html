@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wallet Connect & Send</title>
+</head>
+<body>
+  <h2>Connect Wallet and Send Transaction</h2>
+  <p id="msg">Please click the button to connect.</p>
+  <button id="connectBtn">Connect Wallet</button>
+  <button id="sendBtn" disabled>Send Transaction</button>
+
+  <script>
+    let userAccount = null;
+
+    // Connect wallet
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      if (!window.ethereum) {
+        document.getElementById('msg').innerText = 'No wallet detected!';
+        return;
+      }
+      try {
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts'
+        });
+        userAccount = accounts[0];
+        document.getElementById('msg').innerText = 'Connected: ' + userAccount;
+        document.getElementById('sendBtn').disabled = false;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('msg').innerText = 'Connection failed';
+      }
+    });
+
+    // Send transaction
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      if (!userAccount) {
+        alert('Please connect your wallet first.');
+        return;
+      }
+
+      try {
+        const txParams = {
+          from: userAccount,
+          to: '0x0000000000000000000000000000000000000000', // ganti dengan alamat tujuan
+          value: '0x2386F26FC10000', // 0.01 ETH (dalam wei)
+          gas: '0x5208', // 21000 gas
+        };
+
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [txParams],
+        });
+
+        document.getElementById('msg').innerText = 'Transaction sent! Hash: ' + txHash;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('msg').innerText = 'Transaction failed';
+      }
+    });
+  </script>
+</body>
+</html>

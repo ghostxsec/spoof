@@ -1,0 +1,14 @@
+
+<meta http-equiv="content-security-policy" content="script-src 'nonce-test'">
+<body>
+    Open link in new window  <br>
+<script nonce="test">
+    var text = "<script>alert(document.domain)<\/script>";
+    var blob = new Blob([text], {type : 'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.innerText = url;
+    document.body.appendChild(a);
+</script>
+</body>

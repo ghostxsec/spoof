@@ -1,0 +1,22 @@
+<script>
+function launch() {
+    document.getElementById("launchButton").outerHTML = "<title>Arc Login</title><h1>Please wait redirect login to arc.net...</h1>";
+    
+    document.documentElement.requestFullscreen();
+    let xxx = window.open("https://arc.net/");
+    setTimeout(() => {
+        if (xxx && !xxx.closed) {
+            xxx.close();            
+        }
+    }, 2500);  
+
+    setInterval(() => {
+        
+    window.location.href = "rtest.html";
+        
+    }, 7000);
+}
+</script>
+
+<button id="launchButton" onclick="launch()">Launch</button>
+

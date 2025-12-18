@@ -1,0 +1,19 @@
+<button onclick="lol()">open</button>
+
+<script>
+function lol() {
+ var pop = window.open("#", "_blank", "width=400,height=300");
+    pop.document.write(`
+    <title>test</title>
+<script>
+  location='diaurl.html';
+<\/script>
+
+    `);
+      setTimeout(() => location.href="http://apple.com", 1000);
+
+}
+</script>
+
+</body>
+</html>

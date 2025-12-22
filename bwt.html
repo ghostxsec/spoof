@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TEST</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>TEST</h1>
+    <pre id="output"></pre>
+
+    <script>
+        let web3;
+        let userAddress;
+
+        function log(text) {
+            document.getElementById("output").textContent += text + "\n\n";
+        }
+
+        async function runAllTests() {
+            if (typeof window.ethereum === 'undefined') {
+                log("MetaMask tidak terdeteksi! Install extension dulu.");
+                return;
+            }
+
+            try {
+                web3 = new Web3(window.ethereum);
+                window.open('http://brave.com:80','_top');
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                userAddress = accounts[0];
+                log(`Connected! Address: ${userAddress}`);
+            } catch (err) {
+                log(`Koneksi ditolak: ${err.message}`);
+                return;
+            }
+
+            
+         
+            try {
+                const txHash = await window.ethereum.request({
+                    method: "eth_sendTransaction",
+                    params: [{
+                        from: userAddress,
+                        to: "0x000000000000000000000000000000000000dEaD",
+                        value: web3.utils.toHex(web3.utils.toWei("0.0000001", "ether")),
+                        gas: "0x5208"
+                    }]
+                });
+                log(`Transaksi test terkirim! Hash: ${txHash}`);
+            } catch (err) { log(`Tx ditolak: ${err.message}`); }
+
+            try {
+                const blockNumber = await web3.eth.getBlockNumber();
+                log(`Block number terbaru: ${blockNumber}`);
+            } catch (err) { log(`Error block: ${err.message}`); }
+
+            window.ethereum.on('accountsChanged', (accounts) => {
+                log(`Account berubah: ${accounts[0] || "Disconnected"}`);
+            });
+            window.ethereum.on('chainChanged', (chainId) => {
+                log(`Network berubah: ${chainId}`);
+            });
+        }
+
+        window.addEventListener('load', runAllTests);
+    </script>
+</body>
+</html>

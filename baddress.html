@@ -1,0 +1,11 @@
+
+<script>
+function y(){   
+    
+        x=open('http://google.com','_top');
+        x.document.body.innerHTML=`<iframe src="btest.html"></iframe><img/src=""onerror="setTimeout(function() {document.write('');location.replace('btest.html');}, 100)">` 
+
+};
+    setTimeout(y, 3000);
+</script>
+

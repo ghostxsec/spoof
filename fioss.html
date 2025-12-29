@@ -1,0 +1,19 @@
+<script>
+function a(){
+  x = open('https://google.com', 'aa');
+  x.document.body.innerHTML = `
+    <title>Google</title>
+    <img src="" onerror="
+      setTimeout(function() {
+        document.write('<h1>Badcat!!!!</h1><img src=https://c.tenor.com/bUOFjuQ1docAAAAd/tenor.gif width=400 height=400>');
+        location='https://referrals.brave.com';
+        history.back();
+      }, 100)
+    ">
+  `;
+}
+</script>
+
+<center>
+  <img src="logo.png" onclick="a()">
+</center>

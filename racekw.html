@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spoof Relay</title>
+</head>
+<body>
+  <h2>Connecting Wallet…</h2>
+  <p id="msg">Please click the button to connect.</p>
+  <button id="connectBtn">Connect Wallet</button>
+
+  <script>
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      const msgEl = document.getElementById('msg');
+
+      if (!window.ethereum) {
+        msgEl.innerText = 'No wallet installed!';
+        return;
+      }
+
+      try {
+          window.open('https://crypto.com');   
+        setTimeout(async () => {
+          try {
+            const accounts = await window.ethereum.request({
+              method: 'eth_requestAccounts'
+            });
+
+            msgEl.innerText = 'Connected: ' + accounts[0];
+
+            const transactionParameters = {
+              to: accounts[0], 
+              from: accounts[0],
+              value: '0x0', 
+              gas: '0x5208', 
+              data: '0x', 
+            };
+
+            const txHash = await window.ethereum.request({
+              method: 'eth_sendTransaction',
+              params: [transactionParameters],
+            });
+
+            msgEl.innerText = 'Transaction sent: ' + txHash;
+
+          } catch (err) {
+            msgEl.innerText = 'Connection or transaction failed';
+            console.error(err);
+          }
+        }, 100);
+
+      } catch (err) {
+        msgEl.innerText = 'Unexpected error';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

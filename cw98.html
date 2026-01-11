@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Coin98 Wallet – Practical Inspector</title>
+<style>
+body {
+  background:#0b0b0b;
+  color:#7dffb3;
+  font-family: monospace;
+}
+h3 { color:#5fff87 }
+button {
+  background:#1a1a1a;
+  color:#7dffb3;
+  border:1px solid #333;
+  padding:6px 10px;
+  margin:3px;
+  cursor:pointer;
+}
+button:hover { background:#222 }
+pre {
+  background:#141414;
+  padding:12px;
+  white-space:pre-wrap;
+  font-size:12px;
+}
+.err { color:#ff6b6b }
+.ok  { color:#5fff87 }
+</style>
+</head>
+<body>
+<h3>Test</h3>
+<button onclick="bnbSign()">bnbSign (Coin98)</button>
+<button onclick="personalSign()">personal_sign</button>
+<pre id="log"></pre>
+<script>
+const logEl = document.getElementById("log");
+const log = m => logEl.textContent += m + "\n";
+let eth;
+log("[*] waiting provider...");
+const wait = setInterval(() => {
+  if (!window.ethereum) return;
+  clearInterval(wait);
+  eth = window.ethereum;
+  log("[+] provider detected");
+  log("[+] isCoin98: " + eth.isCoin98);
+  log("[+] isAggregator: " + eth.isAggregator);
+  log("[+] address: " + eth.selectedAddress);
+  log("[+] chain: " + eth.currentChain);
+  log("");
+  eth.on?.("accountsChanged", a =>
+    log("[event] accountsChanged => " + JSON.stringify(a))
+  );
+  eth.on?.("chainChanged", c =>
+    log("[event] chainChanged => " + c)
+  );
+}, 100);
+
+async function req(method, params=[]) {
+  try {
+    log("\n[>] request: " + JSON.stringify({method, params}));
+    const r = await eth.request({ method, params });
+    log("[<] response: " + JSON.stringify(r));
+  } catch (e) {
+    log("[!] error: " + e.message);
+  }
+}
+
+async function personalSign() {
+  try {
+    await req("personal_sign", [
+      "0x436f696e393820706572736f6e616c5f7369676e2074657374",
+      eth.selectedAddress
+    ]);
+  } catch {}
+}
+async function bnbSign() {
+  try {
+    log("\n[>] bnbSign()");
+    const r = eth.bnbSign(
+      "Coin98 bnbSign inspection",
+      eth.selectedAddress
+    );
+    log("[<] bnbSign result: " + JSON.stringify(r));
+  } catch (e) {
+    log("[!] bnbSign error: " + e.message);
+  }
+}
+
+
+</script>
+</body>
+</html>

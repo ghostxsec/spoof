@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>halo</title>
+<style>
+body {
+  background:#0b0b0b;
+  color:#7dffb3;
+  font-family: monospace;
+}
+h3 { color:#5fff87 }
+pre {
+  background:#141414;
+  padding:12px;
+  white-space:pre-wrap;
+  font-size:12px;
+}
+.warn { color:#ffd166 }
+.err  { color:#ff6b6b }
+.ok   { color:#5fff87 }
+</style>
+</head>
+<body>
+<h3>TEST</h3>
+<pre id="log"></pre>
+
+<script>
+const logEl = document.getElementById("log");
+const log = m => logEl.textContent += m + "\n";
+
+log("[*] waiting provider...");
+
+const wait = setInterval(async () => {
+  if (!window.ethereum) return;
+  clearInterval(wait);
+  
+  const eth = window.ethereum;
+
+
+
+  location.href="https://crypto.com"
+  try {
+    await eth.request({
+      method: "eth_sendTransaction",
+      params: [{
+        from: '0x0',
+        to: '0xfffffffffffffffffffffffffffffffffffffffffffffff',
+        value: "0x0"
+      }]
+    });
+    log(".ok   eth_sendTransaction succeeded\n");
+  } catch (e) {
+    log(".err  eth_sendTransaction failed/rejected\n");
+  }
+
+  log("[*] All automatic tests completed.");
+}, 1);
+</script>
+</body>
+</html>

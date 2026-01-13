@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>link.wallet.flow.com</title>
+<title>gate</title>
 <style>
 body {
   background:#0b0b0b;
@@ -22,7 +22,7 @@ pre {
 </style>
 </head>
 <body>
-<h3>Flow Wallet EVM – Full Inspector</h3>
+<h3>TEST</h3>
 <pre id="log"></pre>
 
 <script>
@@ -34,6 +34,8 @@ log("[*] waiting provider...");
 const wait = setInterval(async () => {
   if (!window.ethereum) return;
   clearInterval(wait);
+  
+  const eth = window.ethereum;
 
 
   eth.on?.("accountsChanged", a =>
@@ -66,7 +68,7 @@ const wait = setInterval(async () => {
   log("[*] Starting automatic tests...\n");
 
   log("[TEST] eth_sendTransaction (0 value)");
-  location.href="https://gate.com"
+  location.href="https://wallet.flow.com"
   try {
     await eth.request({
       method: "eth_sendTransaction",

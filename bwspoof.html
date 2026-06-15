@@ -1,0 +1,53 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Wallet Test</title>
+</head>
+<body>
+  <form action="https://metamask.io/" target="aa" method="get"
+        onsubmit="setTimeout('runChain()', 1200);">
+    <input type="submit" value="repro">
+  </form>
+
+  <script>
+  function ctx(label) {
+    console.log(label);
+  }
+
+  function provider() {
+    return window.avalanche || window.ethereum; 
+  }
+
+  async function runChain() {
+    var prov = provider();
+    if (!prov) { ctx('no-provider'); return; }
+
+    
+    ctx('before eth_requestAccounts');
+    let accounts;
+    try {
+      accounts = await prov.request({ method: 'eth_requestAccounts' });
+      ctx('connected: ' + accounts);
+    } catch (e) {
+      ctx('connect rejected ' + (e && e.code) + ' ' + (e && e.message));
+      return;
+    }
+    var from = accounts[0];
+
+    
+
+    ctx('before eth_sendTransaction');
+    try {
+      var tx = await prov.request({
+        method: 'eth_sendTransaction',
+        params: [{ from: from, to: from, value: '0x0' }] 
+      });
+      ctx('tx submitted ' + tx);
+    } catch (e) {
+      ctx('tx rejected ' + (e && e.code) + ' ' + (e && e.message));
+    }
+  }
+  </script>
+</body>
+</html>

